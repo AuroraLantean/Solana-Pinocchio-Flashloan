@@ -57,6 +57,31 @@ impl<'a> FlashloanBorrow<'a> {
       amounts,
     } = self;
 
+    //-----------== Introspecting the Repay instruction
+    let instruction_sysvar =
+      unsafe { Instructions::new_unchecked(instruction_sysvar.try_borrow()?) };
+
+    let num_instructions = instruction_sysvar.num_instructions();
+
+    let repay_ix = instruction_sysvar.load_instruction_at(num_instructions as usize - 1)?;
+
+    if repay_ix.get_program_id().to_bytes().ne(&crate::ID) {
+      return Ee::RepayProgId.e();
+    }
+
+    if unsafe { *(repay_ix.get_instruction_data().as_ptr()) } != *FlashloanRepay::DISCRIMINATOR {
+      return Ee::RepayDiscriminator.e();
+    }
+
+    if unsafe {
+      !address_eq(
+        &repay_ix.get_instruction_account_at_unchecked(1).key,
+        lender_pda.address(),
+      )
+    } {
+      return Ee::RepayIxLenderPda.e();
+    }
+
     Ok(())
   }
 }
