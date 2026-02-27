@@ -110,6 +110,50 @@ impl<'a> FlashloanBorrow<'a> {
       core::slice::from_raw_parts_mut(loan_records.as_mut_ptr() as *mut LoanRecord, amounts.len())
     };
 
+    //loop through all the loans. In each iteration, we get the lender_token_acct and borrower_token_acct, calculate the balance due to the protocol, save this data in the loanRecord account, and transfer the tokens.
+    for (i, amount) in amounts.iter().enumerate() {
+      if *amount == 0 {
+        return Ee::BorrowedAmountIsZero.e();
+      }
+      let lender_token_acct = &token_accounts[i * 2];
+      let borrower_token_acct = &token_accounts[i * 2 + 1];
+
+      // Get the balance of the lender's token account and add the fee to it so we can save it to the loan account
+      let balance = amount_from_token_acct(lender_token_acct)?;
+      if balance == 0 {
+        return Ee::LenderPdaBalanceIsZero.e();
+      }
+      if *amount > balance {
+        return Ee::BorrowAmountTooBig.e();
+      }
+
+      let balance_with_fee = balance
+        .checked_add(
+          amount
+            .checked_mul(fee as u64)
+            .and_then(|x| x.checked_div(10_000))
+            .ok_or_else(|| Ee::MultDivNone)?,
+        )
+        .ok_or_else(|| Ee::AddToOverflow)?;
+
+      // Push the Loan struct to the loan account
+      loan_records_slice[i] = LoanRecord {
+        lender_token_acct: lender_token_acct.address().to_bytes(),
+        balance_with_fee,
+      };
+
+      // Transfer the tokens from the lenderPda to the borrower
+      pinocchio_token::instructions::TransferChecked {
+        from: lender_token_acct,
+        mint,
+        to: borrower_token_acct,
+        authority: lender_pda,
+        amount: *amount,
+        decimals,
+      }
+      .invoke_signed(&signer_seeds)?;
+    }
+
     Ok(())
   }
 }
