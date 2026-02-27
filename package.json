@@ -1,0 +1,41 @@
+{
+	"name": "pino-vault-escrow",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"test2": "echo \"pnpm dlx for npx\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.29.2",
+	"dependencies": {
+		"@codama/nodes-from-anchor": "^1.3.8",
+		"@codama/renderers-js": "^1.7.0",
+		"@codama/renderers-rust": "^1.2.9",
+		"@solana-program/system": "^0.11.0",
+		"@solana-program/token": "^0.10.0",
+		"@solana-program/token-2022": "^0.9.0",
+		"@solana/kit": "^6.0.1",
+		"@solana/spl-token": "^0.4.14",
+		"@types/node": "^25.2.1",
+		"codama": "^1.5.0",
+		"solana-kite": "^3.1.0",
+		"typescript": "^5.9.3",
+		"ws": "^8.19.0"
+	},
+	"private": true,
+	"devDependencies": {
+		"@solana/buffer-layout": "^4.0.1",
+		"@solana/buffer-layout-utils": "^0.3.0",
+		"@solana/web3.js": "^1.98.4",
+		"@types/bun": "latest",
+		"chalk": "^5.6.2",
+		"litesvm": "^0.5.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}
