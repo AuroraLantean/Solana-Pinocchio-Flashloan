@@ -82,6 +82,34 @@ impl<'a> FlashloanBorrow<'a> {
       return Ee::RepayIxLenderPda.e();
     }
 
+    //-----------== Send tokens
+    let fee_bytes = fee.to_le_bytes();
+    let signer_seeds = [
+      Seed::from("protocol".as_bytes()),
+      Seed::from(&fee_bytes),
+      Seed::from(&self.bump),
+    ];
+    let signer_seeds = [Signer::from(&signer_seeds)];
+
+    // Open the LoanRecord account and create a mutable slice to push the Loan struct to it
+    let size = size_of::<LoanRecord>() * amounts.len();
+    let lamports = get_rent_exempt(loan_records, rent_sysvar, size)?;
+
+    pinocchio_system::instructions::CreateAccount {
+      from: signer,
+      to: loan_records,
+      lamports,
+      space: size as u64,
+      owner: &PROG_ADDR,
+    }
+    .invoke()?;
+
+    //Make a mutable slice from the loan account's data. We will populate this slice in a for loop as we process each loan and its corresponding transfer:
+    let mut loan_records = loan_records.try_borrow_mut()?;
+    let loan_records_slice = unsafe {
+      core::slice::from_raw_parts_mut(loan_records.as_mut_ptr() as *mut LoanRecord, amounts.len())
+    };
+
     Ok(())
   }
 }
