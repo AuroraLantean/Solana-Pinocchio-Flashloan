@@ -15,6 +15,7 @@ import {
 	getUtf8Encoder,
 	lamports,
 } from "@solana/kit";
+import type { PublicKey } from "@solana/web3.js";
 import chalk from "chalk";
 import * as flashloan from "../clients/js/src/generated/index";
 import { acctExists, ataBalc } from "./litesvm-utils";
@@ -94,6 +95,63 @@ export type SolanaAccount = {
 		space: number;
 	};
 	pubkey: string;
+};
+//--------------==
+export type IxKeyArray = {
+	pubkey: PublicKey;
+	isSigner: boolean;
+	isWritable: boolean;
+};
+
+export const makeIxKeyArray = (tokenAccts: PublicKey[], amounts: bigint[]) => {
+	const tokAcctsLen = tokenAccts.length;
+	const amountsLen = amounts.length;
+	if (tokAcctsLen === 0) throw new Error("tokAcctsLen is zero");
+	if (tokAcctsLen % 2 !== 0)
+		throw new Error("tokenAccts length should be an even number");
+	if (tokAcctsLen / 2 !== amountsLen)
+		throw new Error("amounts length should match tokAcctLen/2");
+
+	ll("loop over amountsLen index...");
+	const u64bytes: number[] = [];
+	const ixKeyArray: IxKeyArray[] = [];
+	let amount = 0n;
+	let lenderTokBalc = 0n;
+	for (let i = 0; i < amountsLen; i++) {
+		ll("index = ", i);
+		if (amounts[i] === undefined) throw new Error("amounts[i] undefined");
+		amount = amounts[i] ?? 0n;
+		if (amount === 0n) throw new Error(`amount at {i} is zero`);
+
+		u64bytes.push(...numToBytes(amount, 64));
+		const lenderTokAcct = tokenAccts[i * 2];
+		const borrowerTokAcct = tokenAccts[i * 2 + 1];
+		if (lenderTokAcct === undefined) throw new Error("lenderTokAcct undefined");
+		if (borrowerTokAcct === undefined)
+			throw new Error("borrowerTokAcct undefined");
+
+		acctExists(lenderTokAcct);
+		ll("lenderTokAcct exists");
+		acctExists(borrowerTokAcct);
+		ll("borrowerTokAcct exists");
+
+		lenderTokBalc = ataBalc(lenderTokAcct, "lenderTokAcct", true);
+		if (lenderTokBalc === 0n) throw new Error("lenderTokBalc is zero");
+		if (amount > lenderTokBalc)
+			throw new Error("borrowed amount > lenderTokBalc");
+
+		ixKeyArray.push({
+			pubkey: lenderTokAcct,
+			isSigner: false,
+			isWritable: true,
+		});
+		ixKeyArray.push({
+			pubkey: borrowerTokAcct,
+			isSigner: false,
+			isWritable: true,
+		});
+	}
+	return { u64bytes, ixKeyArray };
 };
 //--------------== Bytes
 export const u16Bytes = [0, 0];
