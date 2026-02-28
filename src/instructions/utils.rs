@@ -1,13 +1,12 @@
 //use num_derive::FromPrimitive;
-use crate::PROG_ADDR;
 use pinocchio::{
   error::{ProgramError, ToStr},
   sysvars::rent::{Rent, RENT_ID},
-  AccountView, Address, ProgramResult,
+  AccountView, ProgramResult,
 };
 use pinocchio_log::log; //logger::log_message
 use pinocchio_token::state::{Mint, TokenAccount};
-use pinocchio_token_2022::state::{Mint as Mint22, TokenAccount as TokenAccount22};
+//use pinocchio_token_2022::state::{Mint as Mint22, TokenAccount as TokenAccount22};
 //use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use thiserror::Error;
 
@@ -171,8 +170,10 @@ pub enum Ee {
   //Flashloan
   #[error("TokenAcctsLength")]
   TokenAcctsLength,
-  #[error("LoanRecordAcct")]
-  LoanRecordAcct,
+  #[error("LoanRecordAcctHasData")]
+  LoanRecordAcctHasData,
+  #[error("DataArgLenForU64")]
+  DataArgLenForU64,
   #[error("AmountsLenVsTokenAcctLen")]
   AmountsLenVsTokenAcctLen,
   #[error("BorrowAmountTooBig")]
@@ -284,15 +285,16 @@ impl TryFrom<u32> for Ee {
       69 => Ok(Ee::Xyz069),
 
       70 => Ok(Ee::TokenAcctsLength),
-      71 => Ok(Ee::LoanRecordAcct),
-      72 => Ok(Ee::AmountsLenVsTokenAcctLen),
-      73 => Ok(Ee::BorrowAmountTooBig),
-      74 => Ok(Ee::BorrowedAmountIsZero),
-      75 => Ok(Ee::LenderPdaBalanceIsZero),
-      76 => Ok(Ee::RepayProgId),
-      77 => Ok(Ee::RepayDiscriminator),
-      78 => Ok(Ee::RepayIxLenderPda),
-      79 => Ok(Ee::RepayTokenAccountLen),
+      71 => Ok(Ee::LoanRecordAcctHasData),
+      72 => Ok(Ee::DataArgLenForU64),
+      73 => Ok(Ee::AmountsLenVsTokenAcctLen),
+      74 => Ok(Ee::BorrowAmountTooBig),
+      75 => Ok(Ee::BorrowedAmountIsZero),
+      76 => Ok(Ee::LenderPdaBalanceIsZero),
+      77 => Ok(Ee::RepayProgId),
+      78 => Ok(Ee::RepayDiscriminator),
+      79 => Ok(Ee::RepayIxLenderPda),
+      80 => Ok(Ee::RepayTokenAccountLen),
       _ => Err(Ee::NotMapped.into()),
     }
   }
@@ -379,7 +381,8 @@ impl ToStr for Ee {
 
       //Flashloan
       Ee::TokenAcctsLength => "TokenAcctsLength",
-      Ee::LoanRecordAcct => "LoanRecordAcct",
+      Ee::LoanRecordAcctHasData => "LoanRecordAcctHasData",
+      Ee::DataArgLenForU64 => "DataArgLenForU64",
       Ee::AmountsLenVsTokenAcctLen => "AmountsLenVsTokenAcctLen",
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
       Ee::BorrowedAmountIsZero => "BorrowedAmountIsZero",

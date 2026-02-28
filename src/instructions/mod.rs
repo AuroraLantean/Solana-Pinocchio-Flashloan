@@ -2,14 +2,14 @@
 //declare your new function mod here to be included into this project, then export it via "pub use"
 #[allow(non_snake_case)]
 pub mod flashloanBorrow;
-//#[allow(non_snake_case)]
-//pub mod flashloanRepay;
+#[allow(non_snake_case)]
+pub mod flashloanRepay;
 
 pub mod utils;
 
 //file names start with a lower case + Camel cases, but struct names start with Upper case + Camel cases!
 pub use flashloanBorrow::*;
-//pub use flashloanRepay::*;
+pub use flashloanRepay::*;
 pub use utils::*;
 
 use shank::ShankInstruction;
@@ -32,7 +32,7 @@ pub enum ProgramIx {
   #[account(5, writable, name = "from_ata", desc = "From ATA")]
   FlashloanBorrow { flashloan_vendor: u8, amount: u64 },
 
-  /// 1 FlashloanBorrow
+  /// 1 FlashloanRepay
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   #[account(1, writable, name = "config_pda", desc = "Config PDA")]
   #[account(2, name = "vendor_prog", desc = "Vendor Program")]

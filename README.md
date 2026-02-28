@@ -50,7 +50,35 @@ Codama takes the Shank IDL and emits a TypeScript client. The generated code inc
 ```bash
   pnpm install
   pnpm dlx codama init
+```
+
+✔ Where is your IDL located? (Supports Codama and Anchor IDLs). … idl/pinocchio_flashloan.json
+✔ Which script preset would you like to use? › Generate JavaScript client, Generate Rust client
+✔ [js] Where is the JavaScript client package located? … clients/js
+✔ [rust] Where is the Rust client crate located? … clients/rust
+
+```bash
   pnpm dlx codama run js
 ```
 
-You'll see a clients/js/src/gene` 1qw12qw3erdft6yhj7u8iokl./90You'll see a clients/js/src/generated/ folder in our project with the program types our client code uses to send transactions to our program.
+You'll see a `clients/js/src/generated` folder in our project with the program types our client code uses to send transactions to our program.
+
+### Run Tests via NodeSVM in LiteSVM
+
+Write tests in Rust:
+
+```bash
+cargo add --dev litesvm litesvm-token solana-sdk
+```
+
+Write tests in TypeScript
+See tutorial: <https://litesvm.github.io/litesvm/tutorial.html>
+
+```bash
+pnpm add -D litesvm @solana/web3.js @solana/spl-token
+bun test ./tests/litesvm1.ts
+```
+
+### Run Tests via LiteSVM
+
+See tutorial: <https://www.litesvm.com/docs/getting-started>
