@@ -54,14 +54,14 @@ export type PdaOut = {
 	pda: PublicKey;
 	bump: number;
 };
-export const findPdaV1 = (
-	userAddr: PublicKey,
+export const findLoanRecordsPdaV1 = (
+	fee: number,
 	pdaName: string,
-	seedStr = "vault",
+	seedStr = "moon_pool",
 	progAddr = flashloanProgAddr,
 ): PdaOut => {
 	const [pda, bump] = PublicKey.findProgramAddressSync(
-		[Buffer.from(seedStr), userAddr.toBuffer()],
+		[Buffer.from(seedStr), Buffer.from(numToBytes(fee, 16))],
 		progAddr,
 	);
 	ll(`${pdaName} pda: ${pda.toBase58()}, bump: ${bump}`);

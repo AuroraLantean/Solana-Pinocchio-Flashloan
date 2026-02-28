@@ -1,6 +1,6 @@
 use crate::{
   amount_from_token_acct, check_rent_sysvar, executable, get_rent_exempt,
-  instructions::check_signer, writable, Ee, FlashloanRepay, LoanRecord, PROG_ADDR,
+  instructions::check_signer, writable, Ee, FlashloanRepay, LoanRecord, ID, PROG_ADDR,
 };
 use core::convert::TryFrom;
 use pinocchio::{
@@ -8,7 +8,7 @@ use pinocchio::{
   cpi::{Seed, Signer},
   error::ProgramError,
   sysvars::instructions::{Instructions, INSTRUCTIONS_ID},
-  AccountView, ProgramResult,
+  AccountView, Address, ProgramResult,
 };
 use pinocchio_log::log;
 
@@ -27,7 +27,7 @@ pub struct FlashloanBorrow<'a> {
   //pub lender_ata: &'a AccountView,
   //pub user_ata: &'a AccountView,
   pub decimals: u8,
-  pub bump: [u8; 1],
+  pub bump_array: [u8; 1],
   pub fee: u16,
   pub amounts: &'a [u64],
 } /*Flashloan{
@@ -52,7 +52,7 @@ impl<'a> FlashloanBorrow<'a> {
       rent_sysvar,
       token_accounts,
       decimals,
-      bump,
+      bump_array,
       fee,
       amounts,
     } = self;
@@ -85,11 +85,11 @@ impl<'a> FlashloanBorrow<'a> {
     //-----------== Send tokens
     let fee_bytes = fee.to_le_bytes();
     let signer_seeds = [
-      Seed::from("lender_name".as_bytes()),
+      Seed::from("moon_pool".as_bytes()),
       Seed::from(&fee_bytes),
-      Seed::from(&bump),
+      Seed::from(&bump_array),
     ];
-    let signer_seeds = [Signer::from(&signer_seeds)];
+    let signer_seeds = &[Signer::from(&signer_seeds)];
 
     // Open the LoanRecord account and create a mutable slice to push the Loan struct to it
     let size = size_of::<LoanRecord>() * amounts.len();
@@ -151,7 +151,7 @@ impl<'a> FlashloanBorrow<'a> {
         amount: *amount,
         decimals,
       }
-      .invoke_signed(&signer_seeds)?;
+      .invoke_signed(signer_seeds)?;
     }
 
     Ok(())
@@ -216,6 +216,15 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     if amounts.len() != token_accounts.len() / 2 {
       return Err(Ee::AmountsLenVsTokenAcctLen.into());
     }
+    let str_seed = "moon_pool".as_bytes();
+    let seed = [str_seed, &fee.to_le_bytes()]; //maker.address().as_array(),
+    let seeds = &seed[..];
+
+    let (expected, _bump_loanrecords) = Address::find_program_address(seeds, &ID.into()); //TODO: may incur unknown cost
+    log!("_bump_loanrecords: {}", _bump_loanrecords);
+    if expected.ne(loan_records.address()) {
+      return Err(Ee::NotMapped.into());
+    }
     Ok(Self {
       signer,
       lender_pda,
@@ -229,7 +238,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       token_accounts,
       //lender_ata, user_ata,
       decimals: *decimals,
-      bump: [*bump],
+      bump_array: [*bump],
       fee,
       amounts,
     })
