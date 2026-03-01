@@ -36,7 +36,7 @@ pub struct FlashloanBorrow<'a> {
   config, sysvar_instructions,
   token_program, system_program }*/
 impl<'a> FlashloanBorrow<'a> {
-  pub const DISCRIMINATOR: &'a u8 = &0;
+  pub const DISCRIMINATOR: &'a u8 = &1;
 
   pub fn process(self) -> ProgramResult {
     log!("FlashloanBorrow process()");
@@ -220,6 +220,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     let seed = [str_seed, &fee.to_le_bytes()]; //maker.address().as_array(),
     let seeds = &seed[..];
 
+    //TODO: remove this after testing JS pda derivation
     let (expected, _bump_loanrecords) = Address::find_program_address(seeds, &ID.into()); //TODO: may incur unknown cost
     log!("_bump_loanrecords: {}", _bump_loanrecords);
     if expected.ne(loan_records.address()) {

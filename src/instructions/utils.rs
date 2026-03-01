@@ -162,8 +162,8 @@ pub enum Ee {
   EmptyData,
   #[error("ClockGet")]
   ClockGet,
-  #[error("Xyz068")]
-  Xyz068,
+  #[error("VaultExists")]
+  VaultExists,
   #[error("Xyz069")]
   Xyz069,
 
@@ -281,7 +281,7 @@ impl TryFrom<u32> for Ee {
       64 => Ok(Ee::Remainder),
       65 => Ok(Ee::EmptyData),
       67 => Ok(Ee::ClockGet),
-      68 => Ok(Ee::Xyz068),
+      68 => Ok(Ee::VaultExists),
       69 => Ok(Ee::Xyz069),
 
       70 => Ok(Ee::TokenAcctsLength),
@@ -374,10 +374,11 @@ impl ToStr for Ee {
       Ee::MultiplyOverflow => "MultiplyOverflow",
       Ee::DividedByZero => "DividedByZero",
       Ee::Remainder => "Remainder",
+      //Misc...
       Ee::EmptyData => "EmptyData",
       Ee::ClockGet => "ClockGet",
-      Ee::Xyz068 => "Xyz68",
-      Ee::Xyz069 => "Xyz69",
+      Ee::VaultExists => "VaultExists",
+      Ee::Xyz069 => "Xyz069",
 
       //Flashloan
       Ee::TokenAcctsLength => "TokenAcctsLength",
@@ -395,6 +396,14 @@ impl ToStr for Ee {
       Ee::NotMapped => "NotMapped",
     }
   }
+}
+
+//----------------==
+pub fn check_data_len(data: &[u8], expected: usize) -> ProgramResult {
+  if data.len() != expected {
+    return Ee::InputDataLen.e();
+  }
+  Ok(())
 }
 
 //----------------== Account Verification
