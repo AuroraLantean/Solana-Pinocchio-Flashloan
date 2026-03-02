@@ -31,10 +31,11 @@ pub enum ProgramIx {
   //---------------== Vault PDA Init
   ///0 Vault PDA Init
   #[account(0, signer, writable, name = "signer", desc = "signer")]
+  #[account(1, writable, name = "vault", desc = "Vault PDA")]
   //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
-  #[account(1, name = "system_program", desc = "System Program")]
-  #[account(2, name = "rent_sysvar", desc = "RentSysvar")]
-  VaultInit { vault_bump: u8, decimal: u8 },
+  #[account(2, name = "system_program", desc = "System Program")]
+  #[account(3, name = "rent_sysvar", desc = "RentSysvar")]
+  VaultInit { vault_bump: u8 },
 
   //---------------== Vault TokAcct Init
   /// 1 Vault Token Acct Init

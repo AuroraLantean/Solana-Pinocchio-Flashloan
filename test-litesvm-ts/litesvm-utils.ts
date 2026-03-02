@@ -25,8 +25,9 @@ import {
 	TransactionMetadata,
 } from "litesvm";
 
-import { makeIxKeyArray, numToBytes, zero } from "./utils";
+import { checkDecimals, makeIxKeyArray, numToBytes, zero } from "./utils";
 import {
+	ATokenGPvbd,
 	admin,
 	flashloanProgAddr,
 	hacker,
@@ -54,6 +55,18 @@ export type PdaOut = {
 	pda: PublicKey;
 	bump: number;
 };
+export const findVaultV1 = (
+	pdaName: string,
+	seedStr = "vault",
+	progAddr = flashloanProgAddr,
+): PdaOut => {
+	const [pda, bump] = PublicKey.findProgramAddressSync(
+		[Buffer.from(seedStr)],
+		progAddr,
+	);
+	ll(`${pdaName} pda: ${pda.toBase58()}, bump: ${bump}`);
+	return { pda, bump };
+};
 export const findLoanRecordsPdaV1 = (
 	fee: number,
 	pdaName: string,
@@ -67,8 +80,62 @@ export const findLoanRecordsPdaV1 = (
 	ll(`${pdaName} pda: ${pda.toBase58()}, bump: ${bump}`);
 	return { pda, bump };
 };
-
 //-------------== Program Methods
+export const vaultInit = (
+	userSigner: Keypair,
+	centralVault: PublicKey,
+	//configPda: PublicKey,
+	vaultBump: number,
+) => {
+	const disc = 0;
+	if (vaultBump > 255) throw new Error("vault_bump > 255");
+	const argData = [vaultBump];
+	const blockhash = svm.latestBlockhash();
+	const ix = new TransactionInstruction({
+		keys: [
+			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+			{ pubkey: centralVault, isSigner: false, isWritable: true }, // true
+			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+		],
+		programId: flashloanProgAddr,
+		data: Buffer.from([disc, ...argData]),
+	});
+	sendTxns(svm, blockhash, [ix], [userSigner]);
+};
+export const vaultTokAcct = (
+	userSigner: Keypair,
+	tokAcct: PublicKey,
+	centralVault: PublicKey,
+	mint: PublicKey,
+	//configPda: PublicKey,
+	decimals: number,
+	tokenProg = TOKEN_PROGRAM_ID,
+	atokenProg = ATokenGPvbd,
+) => {
+	const disc = 1;
+	checkDecimals(decimals);
+	//checkBigint(amount, "amount");
+	const argData = [decimals]; //...numToBytes(amount)
+	const blockhash = svm.latestBlockhash();
+	const ix = new TransactionInstruction({
+		keys: [
+			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+			{ pubkey: tokAcct, isSigner: false, isWritable: true },
+			{ pubkey: centralVault, isSigner: false, isWritable: true }, // true
+			{ pubkey: mint, isSigner: false, isWritable: false },
+			//{ pubkey: configPda, isSigner: false, isWritable: true },
+			{ pubkey: tokenProg, isSigner: false, isWritable: false },
+			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+			{ pubkey: atokenProg, isSigner: false, isWritable: false },
+			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+		],
+		programId: flashloanProgAddr,
+		data: Buffer.from([disc, ...argData]),
+	});
+	sendTxns(svm, blockhash, [ix], [userSigner]);
+};
+
 export const flashloan = (
 	userSigner: Keypair,
 	lenderPda: PublicKey,
@@ -84,7 +151,7 @@ export const flashloan = (
 	fee: number,
 	amounts: bigint[],
 ) => {
-	const borrow_disc = 0;
+	const borrow_disc = 2;
 	const _repay_disc = 1;
 	acctIsNull(loanRecordsPda);
 
@@ -288,6 +355,14 @@ export const ACCOUNT_SIZE = AccountLayout.span; */
 	const raw = svm.getAccount(ata);
 	return { raw, ata };
 };
+
+export const getRawAcctData = (account: PublicKey) => {
+	const raw = svm.getAccount(account);
+	if (!raw) throw new Error("account is null");
+	const rawAcctData = raw?.data;
+	ll("rawAcctData:", rawAcctData);
+	return rawAcctData;
+};
 export const tokBalc = (
 	mint: PublicKey,
 	owner: PublicKey,
@@ -301,9 +376,7 @@ export const tokBalc = (
 		programId,
 		associatedTokenProgramId,
 	);
-	const raw = svm.getAccount(ata);
-	if (!raw) throw new Error("Ata is null");
-	const rawAcctData = raw?.data;
+	const rawAcctData = getRawAcctData(ata);
 	const decoded = AccountLayout.decode(rawAcctData);
 	return decoded.amount;
 };

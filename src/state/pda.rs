@@ -1,6 +1,10 @@
 //use pinocchio::{error::ProgramError, AccountView, Address, ProgramResult};
 //use crate::{none_zero_u64, Ee, PROG_ADDR};
 
+use pinocchio::{error::ProgramError, AccountView, ProgramResult};
+
+use crate::{none_zero_u8, Ee, PROG_ADDR};
+
 //------------==
 #[derive(Clone, Debug)]
 #[repr(C)]
@@ -27,6 +31,26 @@ impl Vault {
   }*/
   pub fn bump(&self) -> u8 {
     self.bump
+  }
+  pub fn set_bump(&mut self, bump: u8) -> ProgramResult {
+    none_zero_u8(bump)?;
+    self.bump = bump;
+    Ok(())
+  }
+  pub fn check(pda: &AccountView) -> ProgramResult {
+    if pda.data_len() != Self::LEN {
+      return Ee::VaultDataLengh.e();
+    }
+    unsafe {
+      if pda.owner().ne(&PROG_ADDR) {
+        return Ee::VaultIsForeign.e();
+      }
+    }
+    Ok(())
+  }
+  pub fn from_account_view(pda: &AccountView) -> Result<&mut Self, ProgramError> {
+    Self::check(pda)?;
+    unsafe { Ok(&mut *(pda.borrow_unchecked_mut().as_ptr() as *mut Self)) }
   }
 }
 //temporarily store loan record

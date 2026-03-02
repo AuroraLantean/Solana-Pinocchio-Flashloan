@@ -3,12 +3,13 @@ use pinocchio::{
   cpi::{Seed, Signer},
   error::ProgramError,
   sysvars::rent::Rent,
-  AccountView, Address, ProgramResult,
+  AccountView, ProgramResult,
 };
 use pinocchio_log::log;
 
 use crate::{
-  check_data_len, check_rent_sysvar, instructions::check_signer, writable, Ee, Vault, ID, PROG_ADDR,
+  check_data_len, check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u8,
+  writable, Ee, Vault, PROG_ADDR,
 };
 
 /// Vault Init
@@ -36,17 +37,6 @@ impl<'a> VaultInit<'a> {
     //config_pda.check_borrow_mut()?;
     //let _config: &mut Config = Config::from_account_view(&config_pda)?;
 
-    let str_seed = "moon_pool".as_bytes(); //&[u8], Escrow::SEED
-    let seed = [str_seed];
-    let seeds = &seed[..];
-    let (expected_pda, bump) = Address::find_program_address(seeds, &ID.into()); //TODO: may incur unknown cost
-    if expected_pda.ne(vault.address()) {
-      return Ee::NotMapped.e();
-    }
-    if bump != vault_bump {
-      return Ee::InputDataBump.e();
-    }
-
     if vault.is_data_empty() {
       log!("Make Vault PDA 1");
       let rent = Rent::from_account_view(rent_sysvar)?;
@@ -58,7 +48,6 @@ impl<'a> VaultInit<'a> {
         //Seed::from(signer.address().as_ref()),
         Seed::from(core::slice::from_ref(&vault_bump)),
       ];
-
       let seed_signer = Signer::from(&seeds);
 
       pinocchio_system::instructions::CreateAccount {
@@ -73,6 +62,10 @@ impl<'a> VaultInit<'a> {
       return Ee::VaultExists.e();
     }
     log!("Vault is made");
+
+    vault.check_borrow_mut()?;
+    let vault: &mut Vault = Vault::from_account_view(&vault)?;
+    vault.set_bump(vault_bump)?;
     Ok(())
   }
 }
@@ -83,7 +76,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
     log!("VaultInit try_from");
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
-    let data_len = 26;
+    let data_len = 1;
     //2x u8 takes 2 + 2x u64 takes 16 bytes
     check_data_len(data, data_len)?;
 
@@ -91,7 +84,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
       return Err(ProgramError::NotEnoughAccountKeys);
     };
     check_signer(signer)?;
-    //check_sysprog(system_program)?;
+    check_sysprog(system_program)?;
     check_rent_sysvar(rent_sysvar)?;
     log!("VaultInit try_from 3");
 
@@ -100,11 +93,8 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
     log!("VaultInit try_from 4");
 
     let vault_bump = data[0];
-    let decimal = data[1];
-    //let amount = parse_u64(&data[1..9])?;
-    log!("vault_bump: {}, decimal: {}", vault_bump, decimal);
-    //none_zero_u64(amount)?;
-
+    log!("vault_bump: {}", vault_bump);
+    none_zero_u8(vault_bump)?;
     log!("VaultInit try_from 5");
 
     Ok(Self {

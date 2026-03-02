@@ -95,7 +95,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultTokAcctInit<'a> {
     //none_zero_u64(amount)?;
 
     log!("VaultTokAcctInit try_from 5");
-    rent_exempt_mint(mint, rent_sysvar, 0)?;
+    rent_exempt_mint(mint, rent_sysvar)?;
 
     log!("VaultTokAcctInit try_from 6");
     check_decimals(mint, decimal)?;

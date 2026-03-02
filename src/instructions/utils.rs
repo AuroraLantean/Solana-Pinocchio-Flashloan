@@ -88,10 +88,10 @@ pub enum Ee {
   PdaNoLamport,
   #[error("ForeignPDA")]
   ForeignPDA,
-  #[error("ConfigPDA")]
-  ConfigPDA,
-  #[error("ConfigDataLengh")]
-  ConfigDataLengh,
+  #[error("VaultDataLengh")]
+  VaultDataLengh,
+  #[error("VaultIsForeign")]
+  VaultIsForeign,
 
   //Mint Account
   #[error("DecimalsValue")]
@@ -245,8 +245,8 @@ impl TryFrom<u32> for Ee {
       31 => Ok(Ee::InputDataBump),
       32 => Ok(Ee::PdaNoLamport),
       33 => Ok(Ee::ForeignPDA),
-      34 => Ok(Ee::ConfigPDA),
-      35 => Ok(Ee::ConfigDataLengh),
+      35 => Ok(Ee::VaultDataLengh),
+      34 => Ok(Ee::VaultIsForeign),
       36 => Ok(Ee::DecimalsValue),
       37 => Ok(Ee::MintDataLen),
       38 => Ok(Ee::MintOrMintAuthority),
@@ -340,8 +340,8 @@ impl ToStr for Ee {
       Ee::InputDataBump => "InputDataBump",
       Ee::PdaNoLamport => "PdaNoLamport",
       Ee::ForeignPDA => "ForeignPDA",
-      Ee::ConfigPDA => "ConfigPDA",
-      Ee::ConfigDataLengh => "ConfigDataLengh",
+      Ee::VaultDataLengh => "VaultDataLengh",
+      Ee::VaultIsForeign => "VaultIsForeign",
       Ee::DecimalsValue => "DecimalsValue",
       Ee::MintDataLen => "MintDataLen",
       Ee::MintOrMintAuthority => "MintOrMintAuthority",
@@ -498,11 +498,7 @@ pub fn get_rent_exempt(
 }
 //TODO: Mint and ATA from TokenLgc works. For mint and ATA from Token2022?
 /// acc_type: 0 Mint, 1 TokenAccount
-pub fn rent_exempt_mint(
-  account: &AccountView,
-  rent_sysvar: &AccountView,
-  which_mint: u8,
-) -> ProgramResult {
+pub fn rent_exempt_mint(account: &AccountView, rent_sysvar: &AccountView) -> ProgramResult {
   let rent = Rent::from_account_view(rent_sysvar)?;
   if !rent.is_exempt(account.lamports(), Mint::LEN) {
     return Ee::NoRentExemptMint.e();
@@ -578,7 +574,12 @@ pub fn empty_data(account: &AccountView) -> ProgramResult {
   }
   Ee::EmptyData.e()
 }
-
+pub fn none_zero_u8(uint: u8) -> ProgramResult {
+  if uint == 0u8 {
+    return Ee::ZeroU8.e();
+  }
+  Ok(())
+}
 //----------------== Check Input Values
 
 pub fn check_decimals(mint: &AccountView, decimals: u8) -> ProgramResult {
