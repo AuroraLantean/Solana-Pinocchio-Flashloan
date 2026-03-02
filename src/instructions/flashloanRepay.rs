@@ -10,7 +10,7 @@ pub struct FlashloanRepay<'a> {
   pub token_accounts: &'a [AccountView],
 }
 impl<'a> FlashloanRepay<'a> {
-  pub const DISCRIMINATOR: &'a u8 = &2;
+  pub const DISCRIMINATOR: &'a u8 = &3;
 
   pub fn process(self) -> ProgramResult {
     log!("FlashloanRepay process()");

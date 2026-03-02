@@ -73,26 +73,6 @@ impl<'a> VaultInit<'a> {
       return Ee::VaultExists.e();
     }
     log!("Vault is made");
-
-    /*if vault_tokacct.is_data_empty() {
-      log!("Make vault_tokacct");
-      pinocchio_associated_token_account::instructions::Create {
-        funding_account: signer,
-        account: vault_tokacct,
-        wallet: vault,
-        mint: mint,
-        system_program,
-        token_program,
-      }
-      .invoke()?;
-      //Please upgrade to SPL Token 2022 for immutable owner support
-    } else {
-      log!("vault_tokacct has data");
-      check_ata_vault(vault_tokacct, vault, mint)?;
-      rent_exempt_tokacct(vault_tokacct, rent_sysvar)?;
-    }
-    log!("Vault ATA is found/verified");*/
-
     Ok(())
   }
 }

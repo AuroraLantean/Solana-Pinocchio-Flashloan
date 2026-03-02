@@ -36,7 +36,7 @@ pub struct FlashloanBorrow<'a> {
   config, sysvar_instructions,
   token_program, system_program }*/
 impl<'a> FlashloanBorrow<'a> {
-  pub const DISCRIMINATOR: &'a u8 = &1;
+  pub const DISCRIMINATOR: &'a u8 = &2;
 
   pub fn process(self) -> ProgramResult {
     log!("FlashloanBorrow process()");

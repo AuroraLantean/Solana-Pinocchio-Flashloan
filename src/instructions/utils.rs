@@ -2,7 +2,7 @@
 use pinocchio::{
   error::{ProgramError, ToStr},
   sysvars::rent::{Rent, RENT_ID},
-  AccountView, ProgramResult,
+  AccountView, Address, ProgramResult,
 };
 use pinocchio_log::log; //logger::log_message
 use pinocchio_token::state::{Mint, TokenAccount};
@@ -131,8 +131,8 @@ pub enum Ee {
   NoRentExemptTokAcct22,
   #[error("NoRentExemptMint22")]
   NoRentExemptMint22,
-  #[error("Xyz053")]
-  Xyz053,
+  #[error("NoRentExemptMint")]
+  NoRentExemptMint,
   #[error("Xyz054")]
   Xyz054,
   #[error("Xyz055")]
@@ -266,7 +266,7 @@ impl TryFrom<u32> for Ee {
       50 => Ok(Ee::NoRentExemptTokAcct),
       51 => Ok(Ee::NoRentExemptTokAcct22),
       52 => Ok(Ee::NoRentExemptMint22),
-      53 => Ok(Ee::Xyz053),
+      53 => Ok(Ee::NoRentExemptMint),
       54 => Ok(Ee::Xyz054),
       55 => Ok(Ee::Xyz055),
       56 => Ok(Ee::Xyz056),
@@ -361,7 +361,7 @@ impl ToStr for Ee {
       Ee::NoRentExemptTokAcct => "NoRentExemptTokAcct",
       Ee::NoRentExemptTokAcct22 => "NoRentExemptTokAcct22",
       Ee::NoRentExemptMint22 => "NoRentExemptMint22",
-      Ee::Xyz053 => "Xyz053",
+      Ee::NoRentExemptMint => "NoRentExemptMint",
       Ee::Xyz054 => "Xyz054",
       Ee::Xyz055 => "Xyz055",
       Ee::Xyz056 => "Xyz056",
@@ -438,6 +438,44 @@ pub fn amount_from_token_acct(account: &AccountView) -> Result<u64, ProgramError
 }
 
 //----------------== PDAs and Other Accounts
+pub fn check_ata(ata: &AccountView, owner: &AccountView, mint: &AccountView) -> ProgramResult {
+  let ata_len = ata.data_len();
+  if ata_len == 0 {
+    return Ee::AtaHasNoData.e();
+  }
+  if ata_len.ne(&pinocchio_token::state::TokenAccount::LEN) {
+    return Ee::AtaDataLen.e();
+  }
+  let ata_info = pinocchio_token::state::TokenAccount::from_account_view(ata)?;
+  if ata_info.owner().ne(owner.address()) {
+    return Ee::AtaOrOwner.e();
+  }
+  if ata_info.mint().ne(mint.address()) {
+    return Ee::AtaOrMint.e();
+  }
+  Ok(())
+}
+pub fn rent_exempt_tokacct(account: &AccountView, rent_sysvar: &AccountView) -> ProgramResult {
+  let rent = Rent::from_account_view(rent_sysvar)?;
+  if !rent.is_exempt(account.lamports(), TokenAccount::LEN) {
+    return Ee::NoRentExemptTokAcct.e();
+  }
+  Ok(())
+}
+//--------------==
+pub fn check_sysprog(account: &AccountView) -> ProgramResult {
+  if account.address().ne(&pinocchio_system::ID) {
+    return Ee::SystemProgram.e();
+  }
+  Ok(())
+}
+pub const ATOKENGPVBD: Address = pinocchio_associated_token_account::ID;
+pub fn check_atoken_gpvbd(account: &AccountView) -> ProgramResult {
+  if account.address().ne(&ATOKENGPVBD) {
+    return Ee::AtokenGPvbd.e();
+  }
+  Ok(())
+}
 pub fn check_rent_sysvar(account: &AccountView) -> ProgramResult {
   if account.address().ne(&RENT_ID) {
     return Ee::RentSysvar.e();
@@ -457,6 +495,34 @@ pub fn get_rent_exempt(
   let min_lam = rent.try_minimum_balance(data_len)?;
   log!("rent_exempt: {}", min_lam);
   Ok(min_lam)
+}
+//TODO: Mint and ATA from TokenLgc works. For mint and ATA from Token2022?
+/// acc_type: 0 Mint, 1 TokenAccount
+pub fn rent_exempt_mint(
+  account: &AccountView,
+  rent_sysvar: &AccountView,
+  which_mint: u8,
+) -> ProgramResult {
+  let rent = Rent::from_account_view(rent_sysvar)?;
+  if !rent.is_exempt(account.lamports(), Mint::LEN) {
+    return Ee::NoRentExemptMint.e();
+  }
+  Ok(())
+}
+pub fn check_mint0a(mint: &AccountView, token_program: &AccountView) -> ProgramResult {
+  //if !mint.owned_by(mint_authority)
+  if mint.data_len() != pinocchio_token::state::Mint::LEN {
+    return Ee::MintDataLen.e();
+  }
+  if token_program.address().ne(&pinocchio_token::ID) {
+    return Ee::TokenProgram.e();
+  }
+  unsafe {
+    if mint.owner().ne(&pinocchio_token::ID) {
+      return Ee::MintOrTokenProgram.e();
+    }
+  }
+  Ok(())
 }
 
 //pub const SYSTEMPROGRAM: pinocchio_pubkey::reexport::Pubkey = solana_system_interface::program::ID;

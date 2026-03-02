@@ -6,6 +6,8 @@ pub mod flashloanBorrow;
 pub mod flashloanRepay;
 #[allow(non_snake_case)]
 pub mod vaultInit;
+#[allow(non_snake_case)]
+pub mod vaultTokAcctInit;
 
 pub mod utils;
 
@@ -14,6 +16,7 @@ pub use flashloanBorrow::*;
 pub use flashloanRepay::*;
 pub use utils::*;
 pub use vaultInit::*;
+pub use vaultTokAcctInit::*;
 
 use shank::ShankInstruction;
 
@@ -26,27 +29,27 @@ use shank::ShankInstruction;
 #[derive(ShankInstruction)]
 pub enum ProgramIx {
   //---------------== Vault PDA Init
-  /// 0 Vault Token Make Offer
+  ///0 Vault PDA Init
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
   #[account(1, name = "system_program", desc = "System Program")]
   #[account(2, name = "rent_sysvar", desc = "RentSysvar")]
   VaultInit { vault_bump: u8, decimal: u8 },
 
-  //---------------== 1 Vault Token Acct Init
-  /*#[account(0, signer, writable, name = "signer", desc = "signer")]
-    #[account(1, writable, name = "Vault_pda", desc = "Vault PDA")]
-    #[account(2, writable, name = "vault_tokacct", desc = "Vault Token Acct")]
-    #[account(3, name = "mint", desc = "Mint")]
-    //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
-    #[account(4, name = "token_program", desc = "Token Program")]
-    #[account(5, name = "system_program", desc = "System Program")]
-    #[account(6, name = "atoken_program", desc = "Associated Token Program")]
-    #[account(7, name = "rent_sysvar", desc = "RentSysvar")]
-    VaultTokAcctInit { vault_bump: u8, decimal: u8 },
-  */
+  //---------------== Vault TokAcct Init
+  /// 1 Vault Token Acct Init
+  #[account(0, signer, writable, name = "signer", desc = "signer")]
+  #[account(1, writable, name = "Vault_pda", desc = "Vault PDA")]
+  #[account(2, writable, name = "vault_tokacct", desc = "Vault Token Acct")]
+  #[account(3, name = "mint", desc = "Mint")]
+  //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
+  #[account(4, name = "token_program", desc = "Token Program")]
+  #[account(5, name = "system_program", desc = "System Program")]
+  #[account(6, name = "atoken_program", desc = "Associated Token Program")]
+  #[account(7, name = "rent_sysvar", desc = "RentSysvar")]
+  VaultTokAcctInit { vault_bump: u8, decimal: u8 },
   //---------------== Flashloan
-  /// 1 FlashloanBorrow
+  /// 2 FlashloanBorrow
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   #[account(1, writable, name = "config_pda", desc = "Config PDA")]
   #[account(2, name = "vendor_prog", desc = "Vendor Program")]
@@ -55,7 +58,7 @@ pub enum ProgramIx {
   #[account(5, writable, name = "from_ata", desc = "From ATA")]
   FlashloanBorrow { flashloan_vendor: u8, amount: u64 },
 
-  /// 2 FlashloanRepay
+  /// 3 FlashloanRepay
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   #[account(1, writable, name = "config_pda", desc = "Config PDA")]
   #[account(2, name = "vendor_prog", desc = "Vendor Program")]
