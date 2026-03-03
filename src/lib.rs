@@ -41,7 +41,7 @@ fn process_instruction(
   //reads the first byte as a discriminator to determine which method to call (here: 0 = DepositSol, 1 = WithdrawSol).
   match discriminator {
     VaultInit::DISCRIMINATOR => VaultInit::try_from((data, accounts))?.process(),
-    VaultTokAcctInit::DISCRIMINATOR => VaultTokAcctInit::try_from((data, accounts))?.process(),
+    VaultAtaInit::DISCRIMINATOR => VaultAtaInit::try_from((data, accounts))?.process(),
     FlashloanBorrow::DISCRIMINATOR => FlashloanBorrow::try_from((data, accounts))?.process(),
     FlashloanRepay::DISCRIMINATOR => FlashloanRepay::try_from((data, accounts))?.process(),
     _ => Err(Ee::MethodDiscriminator.into()),

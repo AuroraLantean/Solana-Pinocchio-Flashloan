@@ -6,7 +6,7 @@ import type { Keypair, PublicKey } from "@solana/web3.js";
 import {
 	acctExists,
 	acctIsNull,
-	findLoanRecordsPdaV1,
+	findLoanRecordsV1,
 	findVaultV1,
 	flashloan,
 	getAta,
@@ -17,6 +17,7 @@ import {
 	setMint,
 	svm,
 	vaultInit,
+	vaultTokAcctInit,
 	//vault1,
 	//vaultAta1,
 	//vaultO,
@@ -38,7 +39,7 @@ let mint: PublicKey;
 let loanRecordsOut: PdaOut;
 let vaultOut: PdaOut;
 let vault: PublicKey;
-let vault_tokacct: PublicKey;
+let vaultTokAcct: PublicKey;
 let tokenProgram: PublicKey;
 let userAta: PublicKey;
 let tokenAccts: PublicKey[];
@@ -77,26 +78,36 @@ test("Set USDC Mint and ATAs", () => {
 test("Init Vault", () => {
 	ll("\n------== Init Vault");
 	signerKp = user1Kp;
-	vaultOut = findVaultV1("Vault");
+	fee = 500;
+	vaultOut = findVaultV1("Vault", fee);
 	vault = vaultOut.pda;
 	vaultBump = vaultOut.bump;
 
 	acctIsNull(vault);
-	vaultInit(signerKp, vault, vaultBump);
+	vaultInit(signerKp, vault, fee, vaultBump);
 	acctExists(vault);
 	const rawAcctData = getRawAcctData(vault);
 	expect(rawAcctData[0]).toEqual(vaultBump);
 });
-test.skip("Init Vault token account", () => {
-	ll("\n------== Init Vault and its token account");
-	//TODO
-	vault_tokacct = user1;
+test("Init Vault ATA", () => {
+	ll("\n------== Init Vault ATA");
+	signerKp = user1Kp;
+	fee = 500;
+	vaultOut = findVaultV1("Vault", fee);
+	vault = vaultOut.pda;
+	mint = usdcMint;
+	vaultTokAcct = getAta(mint, vault);
+	//decimals = 6;
+
+	acctIsNull(vaultTokAcct);
+	vaultTokAcctInit(signerKp, vault, vaultTokAcct, mint, fee);
+	acctExists(vaultTokAcct);
 });
 test.skip("Flashloan", () => {
 	ll("\n------== Flashloan");
 	signerKp = user1Kp;
 	vault = user1;
-	loanRecordsOut = findLoanRecordsPdaV1(fee, "moon_pool");
+	loanRecordsOut = findLoanRecordsV1(fee, "moon_pool");
 	mint = usdcMint;
 	tokenProgram = TOKEN_PROGRAM_ID;
 	decimals = 6;
@@ -104,7 +115,7 @@ test.skip("Flashloan", () => {
 	fee = 500;
 	amounts = [100n, 100n];
 	userAta = getAta(mint, signer);
-	tokenAccts = [vault_tokacct, userAta];
+	tokenAccts = [vaultTokAcct, userAta];
 
 	signer = signerKp.publicKey;
 

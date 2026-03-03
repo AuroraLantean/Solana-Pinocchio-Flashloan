@@ -1,6 +1,6 @@
 use crate::{
   amount_from_token_acct, check_rent_sysvar, executable, get_rent_exempt,
-  instructions::check_signer, writable, Ee, FlashloanRepay, LoanRecord, ID, PROG_ADDR,
+  instructions::check_signer, writable, Ee, FlashloanRepay, LoanRecord, Vault, ID, PROG_ADDR,
 };
 use core::convert::TryFrom;
 use pinocchio::{
@@ -216,16 +216,20 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     if amounts.len() != token_accounts.len() / 2 {
       return Err(Ee::AmountsLenVsTokenAcctLen.into());
     }
-    let str_seed = "moon_pool".as_bytes();
-    let seed = [str_seed, &fee.to_le_bytes()]; //maker.address().as_array(),
+    //let str_seed = "moon_pool".as_bytes();
+    let seed = [Vault::SEED, &fee.to_le_bytes()]; //maker.address().as_array(),
     let seeds = &seed[..];
 
     //TODO: remove this after testing JS pda derivation
-    let (expected, _bump_loanrecords) = Address::find_program_address(seeds, &ID.into()); //TODO: may incur unknown cost
-    log!("_bump_loanrecords: {}", _bump_loanrecords);
+    let (expected, bump_loanrecords) = Address::find_program_address(seeds, &ID.into()); //TODO: may incur unknown cost
+    log!("bump_loanrecords: {}", bump_loanrecords);
     if expected.ne(loan_records.address()) {
       return Err(Ee::NotMapped.into());
     }
+    if *bump != bump_loanrecords {
+      return Err(Ee::InputDataBump.into());
+    }
+    log!("tryFrom() successful");
     Ok(Self {
       signer,
       lender_pda,

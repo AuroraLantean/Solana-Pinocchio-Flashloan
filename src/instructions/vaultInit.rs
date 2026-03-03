@@ -9,7 +9,7 @@ use pinocchio_log::log;
 
 use crate::{
   check_data_len, check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u8,
-  writable, Ee, Vault, PROG_ADDR,
+  parse_u16, writable, Ee, Vault, PROG_ADDR,
 };
 
 /// Vault Init
@@ -19,6 +19,7 @@ pub struct VaultInit<'a> {
   //pub config_pda: &'a AccountView,
   pub system_program: &'a AccountView,
   pub rent_sysvar: &'a AccountView,
+  pub fee: u16,
   pub vault_bump: u8,
 }
 impl<'a> VaultInit<'a> {
@@ -31,6 +32,7 @@ impl<'a> VaultInit<'a> {
       //config_pda,
       system_program: _,
       rent_sysvar,
+      fee,
       vault_bump,
     } = self;
     log!("---------== process()");
@@ -43,9 +45,11 @@ impl<'a> VaultInit<'a> {
       let lamports = rent.try_minimum_balance(Vault::LEN)?;
 
       log!("Make Vault PDA 2");
+      let fee_seed = fee.to_le_bytes();
       let seeds = [
         Seed::from(Vault::SEED),
         //Seed::from(signer.address().as_ref()),
+        Seed::from(&fee_seed),
         Seed::from(core::slice::from_ref(&vault_bump)),
       ];
       let seed_signer = Signer::from(&seeds);
@@ -76,8 +80,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
     log!("VaultInit try_from");
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
-    let data_len = 1;
-    //2x u8 takes 2 + 2x u64 takes 16 bytes
+    let data_len = 3;
     check_data_len(data, data_len)?;
 
     let [signer, vault, system_program, rent_sysvar] = accounts else {
@@ -95,6 +98,9 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
     let vault_bump = data[0];
     log!("vault_bump: {}", vault_bump);
     none_zero_u8(vault_bump)?;
+
+    let fee = parse_u16(&data[1..3])?;
+    log!("fee: {}", fee);
     log!("VaultInit try_from 5");
 
     Ok(Self {
@@ -103,6 +109,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
       //config_pda,
       system_program,
       rent_sysvar,
+      fee,
       vault_bump,
     })
   }

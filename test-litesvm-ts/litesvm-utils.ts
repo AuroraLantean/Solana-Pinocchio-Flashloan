@@ -25,7 +25,7 @@ import {
 	TransactionMetadata,
 } from "litesvm";
 
-import { checkDecimals, makeIxKeyArray, numToBytes, zero } from "./utils";
+import { makeIxKeyArray, numToBytes, zero } from "./utils";
 import {
 	ATokenGPvbd,
 	admin,
@@ -57,17 +57,19 @@ export type PdaOut = {
 };
 export const findVaultV1 = (
 	pdaName: string,
+	fee: number,
 	seedStr = "vault",
 	progAddr = flashloanProgAddr,
 ): PdaOut => {
 	const [pda, bump] = PublicKey.findProgramAddressSync(
-		[Buffer.from(seedStr)],
+		[Buffer.from(seedStr), Buffer.from(numToBytes(fee, 16))], //Buffer.copyBytesFrom(numToBytes(idBigInt)),
 		progAddr,
-	);
+	); // addr.toBuffer()
 	ll(`${pdaName} pda: ${pda.toBase58()}, bump: ${bump}`);
 	return { pda, bump };
 };
-export const findLoanRecordsPdaV1 = (
+
+export const findLoanRecordsV1 = (
 	fee: number,
 	pdaName: string,
 	seedStr = "moon_pool",
@@ -83,18 +85,19 @@ export const findLoanRecordsPdaV1 = (
 //-------------== Program Methods
 export const vaultInit = (
 	userSigner: Keypair,
-	centralVault: PublicKey,
+	vaultPda: PublicKey,
 	//configPda: PublicKey,
+	fee: number,
 	vaultBump: number,
 ) => {
 	const disc = 0;
 	if (vaultBump > 255) throw new Error("vault_bump > 255");
-	const argData = [vaultBump];
+	const argData = [vaultBump, ...numToBytes(fee, 16)];
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: centralVault, isSigner: false, isWritable: true }, // true
+			{ pubkey: vaultPda, isSigner: false, isWritable: true }, // true
 			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
 			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
 		],
@@ -103,26 +106,27 @@ export const vaultInit = (
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner]);
 };
-export const vaultTokAcct = (
+export const vaultTokAcctInit = (
 	userSigner: Keypair,
-	tokAcct: PublicKey,
-	centralVault: PublicKey,
+	vaultPda: PublicKey,
+	vaultTokAcct: PublicKey,
 	mint: PublicKey,
 	//configPda: PublicKey,
-	decimals: number,
+	//decimals: number,
+	//vaultTokAcctBump: number,
+	fee: number,
 	tokenProg = TOKEN_PROGRAM_ID,
 	atokenProg = ATokenGPvbd,
 ) => {
 	const disc = 1;
-	checkDecimals(decimals);
-	//checkBigint(amount, "amount");
-	const argData = [decimals]; //...numToBytes(amount)
+	//checkDecimals(decimals);
+	const argData = [...numToBytes(fee, 16)];
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: tokAcct, isSigner: false, isWritable: true },
-			{ pubkey: centralVault, isSigner: false, isWritable: true }, // true
+			{ pubkey: vaultPda, isSigner: false, isWritable: true }, // true
+			{ pubkey: vaultTokAcct, isSigner: false, isWritable: true },
 			{ pubkey: mint, isSigner: false, isWritable: false },
 			//{ pubkey: configPda, isSigner: false, isWritable: true },
 			{ pubkey: tokenProg, isSigner: false, isWritable: false },

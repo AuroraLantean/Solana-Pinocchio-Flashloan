@@ -599,3 +599,10 @@ pub fn parse_u64(data: &[u8]) -> Result<u64, ProgramError> {
   // let amount = u64::from_le_bytes([data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]]);
   Ok(amt)
 }
+pub fn parse_u16(data: &[u8]) -> Result<u16, ProgramError> {
+  let bytes: [u8; 2] = data.try_into().or_else(|_e| Err(Ee::ByteSizeForU16))?;
+
+  let amt = u16::from_le_bytes(bytes);
+  // let amount = u64::from_le_bytes([data[0], data[1], data[2], data[3]]);
+  Ok(amt)
+}
