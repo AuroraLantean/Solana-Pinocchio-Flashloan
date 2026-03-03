@@ -106,7 +106,7 @@ export const vaultInit = (
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner]);
 };
-export const vaultTokAcctInit = (
+export const vaultAtaInit = (
 	userSigner: Keypair,
 	vaultPda: PublicKey,
 	vaultTokAcct: PublicKey,
@@ -155,8 +155,8 @@ export const flashloan = (
 	fee: number,
 	amounts: bigint[],
 ) => {
-	const borrow_disc = 2;
-	const _repay_disc = 1;
+	const borrow_disc = 3;
+	const _repay_disc = 4;
 	acctIsNull(loanRecordsPda);
 
 	if (decimals < 0 || decimals > 18) throw new Error("decimal out of range");

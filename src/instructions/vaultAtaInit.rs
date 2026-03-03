@@ -13,7 +13,7 @@ pub struct VaultAtaInit<'a> {
   pub signer: &'a AccountView,
   pub mint: &'a AccountView,
   pub vault: &'a AccountView,
-  pub vault_tokacct: &'a AccountView,
+  pub vault_ata: &'a AccountView,
   //pub config_pda: &'a AccountView,
   pub token_program: &'a AccountView,
   pub system_program: &'a AccountView,
@@ -28,7 +28,7 @@ impl<'a> VaultAtaInit<'a> {
       signer,
       mint,
       vault,
-      vault_tokacct,
+      vault_ata,
       //config_pda,
       token_program,
       system_program,
@@ -39,11 +39,11 @@ impl<'a> VaultAtaInit<'a> {
     //config_pda.check_borrow_mut()?;
     //let _config: &mut Config = Config::from_account_view(&config_pda)?;
 
-    if vault_tokacct.is_data_empty() {
-      log!("Make vault_tokacct");
+    if vault_ata.is_data_empty() {
+      log!("Make vault_ata");
       pinocchio_associated_token_account::instructions::Create {
         funding_account: signer,
-        account: vault_tokacct,
+        account: vault_ata,
         wallet: vault,
         mint,
         system_program,
@@ -52,9 +52,9 @@ impl<'a> VaultAtaInit<'a> {
       .invoke()?;
       //Please upgrade to SPL Token 2022 for immutable owner support
     } else {
-      log!("vault_tokacct has data");
-      check_ata(vault_tokacct, vault, mint)?;
-      rent_exempt_tokacct(vault_tokacct, rent_sysvar)?;
+      log!("vault_ata has data");
+      check_ata(vault_ata, vault, mint)?;
+      rent_exempt_tokacct(vault_ata, rent_sysvar)?;
     }
     log!("Vault token account is found/verified");
 
@@ -71,7 +71,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultAtaInit<'a> {
     let data_len = 2;
     check_data_len(data, data_len)?;
 
-    let [signer, vault, vault_tokacct, mint, token_program, system_program, atoken_program, rent_sysvar] =
+    let [signer, vault, vault_ata, mint, token_program, system_program, atoken_program, rent_sysvar] =
       accounts
     else {
       return Err(ProgramError::NotEnoughAccountKeys);
@@ -83,7 +83,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultAtaInit<'a> {
     check_rent_sysvar(rent_sysvar)?;
     log!("VaultAtaInit try_from 3");
 
-    writable(vault_tokacct)?;
+    writable(vault_ata)?;
     writable(vault)?;
     //writable(config_pda)?;
     log!("VaultAtaInit try_from 4");
@@ -100,7 +100,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultAtaInit<'a> {
       signer,
       mint,
       vault,
-      vault_tokacct,
+      vault_ata,
       //config_pda,
       token_program,
       system_program,

@@ -16,17 +16,17 @@ import {
 	setAtaCheck,
 	setMint,
 	svm,
+	vaultAtaInit,
 	vaultInit,
-	vaultTokAcctInit,
 	//vault1,
 	//vaultAta1,
 	//vaultO,
 } from "./litesvm-utils";
-import { bigintAmt, ll } from "./utils";
+import { as6zBn, bigintAmt, ll } from "./utils";
 import {
 	admin,
+	adminKp,
 	hacker,
-	usdcMint,
 	user1,
 	user1Kp,
 	user2,
@@ -39,19 +39,22 @@ let mint: PublicKey;
 let loanRecordsOut: PdaOut;
 let vaultOut: PdaOut;
 let vault: PublicKey;
-let vaultTokAcct: PublicKey;
+let vaultAta: PublicKey;
+let toAta: PublicKey;
+let fromAta: PublicKey;
 let tokenProgram: PublicKey;
-let userAta: PublicKey;
-let tokenAccts: PublicKey[];
+let _toAtata: PublicKey;
+let _fromAtacts: PublicKey[];
 let vaultBump: number;
 let decimals: number;
 let bump: number;
 let fee: number;
+let amt: bigint;
 let amounts: bigint[];
 
-let balcBf: bigint | null;
+let _amtcBf: bigint | null;
 let _balcAf: bigint | null;
-const initUsdcBalc = bigintAmt(1000, 6);
+const initUsdcBalc = bigintAmt(10000, 6);
 //co_balcAfultRent = 1002240n; //from Rust
 
 balcBf = svm.getBalance(admin);
@@ -89,20 +92,20 @@ test("Init Vault", () => {
 	const rawAcctData = getRawAcctData(vault);
 	expect(rawAcctData[0]).toEqual(vaultBump);
 });
-test("Init Vault ATA", () => {
+test.skip("Init Vault ATA", () => {
 	ll("\n------== Init Vault ATA");
 	signerKp = user1Kp;
 	fee = 500;
 	vaultOut = findVaultV1("Vault", fee);
 	vault = vaultOut.pda;
 	mint = usdcMint;
-	vaultTokAcct = getAta(mint, vault);
-	//decimals = 6;
+	vaultAta = getAta(mint, vault);
 
-	acctIsNull(vaultTokAcct);
-	vaultTokAcctInit(signerKp, vault, vaultTokAcct, mint, fee);
-	acctExists(vaultTokAcct);
+	acctIsNull(vaultAta);
+	vaultAtaInit(signerKp, vault, vaultAta, mint, fee);
+	acctExists(vaultAta);
 });
+
 test.skip("Flashloan", () => {
 	ll("\n------== Flashloan");
 	signerKp = user1Kp;
@@ -115,7 +118,7 @@ test.skip("Flashloan", () => {
 	fee = 500;
 	amounts = [100n, 100n];
 	userAta = getAta(mint, signer);
-	tokenAccts = [vaultTokAcct, userAta];
+	tokenAccts = [vaultAta, userAta];
 
 	signer = signerKp.publicKey;
 

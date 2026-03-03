@@ -437,6 +437,14 @@ pub fn amount_from_token_acct(account: &AccountView) -> Result<u64, ProgramError
   Ok(balance)
 }
 
+pub fn ata_balc(from_ata: &AccountView, amount: u64) -> ProgramResult {
+  let from_ata_info = TokenAccount::from_account_view(from_ata)?;
+  if from_ata_info.amount() < amount {
+    return Err(ProgramError::InsufficientFunds);
+  }
+  Ok(())
+}
+
 //----------------== PDAs and Other Accounts
 pub fn check_ata(ata: &AccountView, owner: &AccountView, mint: &AccountView) -> ProgramResult {
   let ata_len = ata.data_len();
@@ -573,6 +581,13 @@ pub fn empty_data(account: &AccountView) -> ProgramResult {
     return Ok(());
   }
   Ee::EmptyData.e()
+}
+
+pub fn none_zero_u64(uint: u64) -> ProgramResult {
+  if uint == 0u64 {
+    return Ee::ZeroU64.e();
+  }
+  Ok(())
 }
 pub fn none_zero_u8(uint: u8) -> ProgramResult {
   if uint == 0u8 {

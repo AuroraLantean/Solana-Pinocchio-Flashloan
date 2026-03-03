@@ -16,7 +16,7 @@ pub struct Vault {
 }
 impl Vault {
   pub const LEN: usize = core::mem::size_of::<Vault>();
-  //pub const LEN: usize = 32 + 8 + 1+1;
+  //pub const LEN: usize = 1;
 
   pub const SEED: &[u8] = b"vault";
 
@@ -59,4 +59,10 @@ impl Vault {
 pub struct LoanRecord {
   pub lender_token_acct: [u8; 32],
   pub balance_with_fee: u64,
+}
+impl LoanRecord {
+  pub const LEN: usize = core::mem::size_of::<LoanRecord>();
+  //pub const LEN: usize = 32 + 8;
+
+  pub const SEED: &[u8] = b"loanrecord";
 }
