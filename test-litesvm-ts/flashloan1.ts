@@ -6,6 +6,7 @@ import type { Keypair, PublicKey } from "@solana/web3.js";
 import {
 	acctExists,
 	acctIsNull,
+	ataBalCk,
 	findLoanRecordsV1,
 	findVaultV1,
 	flashloan,
@@ -16,6 +17,7 @@ import {
 	setAtaCheck,
 	setMint,
 	svm,
+	tokLgcDeposit,
 	vaultAtaInit,
 	vaultInit,
 	//vault1,
@@ -27,6 +29,7 @@ import {
 	admin,
 	adminKp,
 	hacker,
+	usdcMint,
 	user1,
 	user1Kp,
 	user2,
@@ -43,8 +46,8 @@ let vaultAta: PublicKey;
 let toAta: PublicKey;
 let fromAta: PublicKey;
 let tokenProgram: PublicKey;
-let _toAtata: PublicKey;
-let _fromAtacts: PublicKey[];
+let userAta: PublicKey;
+let tokenAccts: PublicKey[];
 let vaultBump: number;
 let decimals: number;
 let bump: number;
@@ -52,7 +55,7 @@ let fee: number;
 let amt: bigint;
 let amounts: bigint[];
 
-let _amtcBf: bigint | null;
+let balcBf: bigint | null;
 let _balcAf: bigint | null;
 const initUsdcBalc = bigintAmt(10000, 6);
 //co_balcAfultRent = 1002240n; //from Rust
@@ -105,7 +108,32 @@ test.skip("Init Vault ATA", () => {
 	vaultAtaInit(signerKp, vault, vaultAta, mint, fee);
 	acctExists(vaultAta);
 });
+test("Deposit Legacy Tokens", () => {
+	ll("\n------== Deposit Legacy Tokens");
+	signerKp = adminKp;
+	mint = usdcMint;
+	decimals = 6;
+	amt = as6zBn(3700);
 
+	signer = signerKp.publicKey;
+	fromAta = getAta(mint, signer);
+	fee = 500;
+	vaultOut = findVaultV1("Vault", fee);
+	toAta = getAta(mint, vaultOut.pda);
+
+	tokLgcDeposit(
+		signerKp,
+		fromAta,
+		toAta,
+		vaultOut.pda, //vault as to_wallet
+		mint,
+		//configPDA,
+		decimals,
+		amt,
+	);
+	ataBalCk(toAta, as6zBn(3700), "vault1");
+	ataBalCk(fromAta, as6zBn(6300), "admin ");
+});
 test.skip("Flashloan", () => {
 	ll("\n------== Flashloan");
 	signerKp = user1Kp;

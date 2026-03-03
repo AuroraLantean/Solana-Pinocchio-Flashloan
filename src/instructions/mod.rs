@@ -53,6 +53,18 @@ pub enum ProgramIx {
   #[account(7, name = "rent_sysvar", desc = "Rent Sysvar")]
   VaultTokAcctInit { decimal: u8 },
 
+  /// 2 Token Legacy Deposit to Vault
+  #[account(0, signer, writable, name = "signer", desc = "signer")]
+  #[account(1, writable, name = "vault_pda", desc = "Vault PDA")]
+  #[account(2, writable, name = "vault_tokacct", desc = "Vault Token Acct")]
+  #[account(3, name = "mint", desc = "Mint")]
+  //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
+  #[account(4, name = "token_program", desc = "Token Program")]
+  #[account(5, name = "system_program", desc = "System Program")]
+  #[account(6, name = "atoken_program", desc = "Associated Token Program")]
+  #[account(7, name = "rent_sysvar", desc = "Rent Sysvar")]
+  TokLgcDeposit { decimal: u8 },
+
   //---------------== Flashloan
   /// 3 FlashloanBorrow
   #[account(0, signer, writable, name = "signer", desc = "signer")]

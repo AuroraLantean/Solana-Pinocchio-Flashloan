@@ -25,7 +25,13 @@ import {
 	TransactionMetadata,
 } from "litesvm";
 
-import { makeIxKeyArray, numToBytes, zero } from "./utils";
+import {
+	checkBigint,
+	checkDecimals,
+	makeIxKeyArray,
+	numToBytes,
+	zero,
+} from "./utils";
 import {
 	ATokenGPvbd,
 	admin,
@@ -127,6 +133,42 @@ export const vaultAtaInit = (
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
 			{ pubkey: vaultPda, isSigner: false, isWritable: true }, // true
 			{ pubkey: vaultTokAcct, isSigner: false, isWritable: true },
+			{ pubkey: mint, isSigner: false, isWritable: false },
+			//{ pubkey: configPda, isSigner: false, isWritable: true },
+			{ pubkey: tokenProg, isSigner: false, isWritable: false },
+			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+			{ pubkey: atokenProg, isSigner: false, isWritable: false },
+			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+		],
+		programId: flashloanProgAddr,
+		data: Buffer.from([disc, ...argData]),
+	});
+	sendTxns(svm, blockhash, [ix], [userSigner]);
+};
+
+export const tokLgcDeposit = (
+	userSigner: Keypair,
+	fromAta: PublicKey,
+	toAta: PublicKey,
+	vault: PublicKey,
+	mint: PublicKey,
+	//configPda: PublicKey,
+	decimals: number,
+	amount: bigint,
+	tokenProg = TOKEN_PROGRAM_ID,
+	atokenProg = ATokenGPvbd,
+) => {
+	const disc = 2;
+	checkDecimals(decimals);
+	checkBigint(amount, "amount");
+	const argData = [decimals, ...numToBytes(amount)];
+	const blockhash = svm.latestBlockhash();
+	const ix = new TransactionInstruction({
+		keys: [
+			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+			{ pubkey: fromAta, isSigner: false, isWritable: true },
+			{ pubkey: toAta, isSigner: false, isWritable: true },
+			{ pubkey: vault, isSigner: false, isWritable: true }, // true
 			{ pubkey: mint, isSigner: false, isWritable: false },
 			//{ pubkey: configPda, isSigner: false, isWritable: true },
 			{ pubkey: tokenProg, isSigner: false, isWritable: false },
