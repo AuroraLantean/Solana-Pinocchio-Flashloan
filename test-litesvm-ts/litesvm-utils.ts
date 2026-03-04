@@ -231,7 +231,7 @@ export const flashloan = (
 		programId: flashloanProgAddr,
 		data: Buffer.from([borrow_disc, ...argData]),
 	});
-	const ix1 = new TransactionInstruction({
+	const ixLast = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
 			{ pubkey: vaultPda, isSigner: false, isWritable: true },
@@ -241,7 +241,7 @@ export const flashloan = (
 		programId: flashloanProgAddr,
 		data: Buffer.from([repay_disc, ...argData]),
 	});
-	sendTxns(svm, blockhash, [ix0, ix1], [userSigner], "", flashloanProgAddr);
+	sendTxns(svm, blockhash, [ix0, ixLast], [userSigner], "", flashloanProgAddr);
 };
 //-------------== LiteSVM System Methods
 export const sendSol = (signer: Keypair, addrTo: PublicKey, amount: bigint) => {

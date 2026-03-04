@@ -187,8 +187,8 @@ pub enum Ee {
   BorrowAmountTooBig,
   #[error("BorrowedAmountIsZero")]
   BorrowedAmountIsZero,
-  #[error("LenderAtaBalcZero")]
-  LenderAtaBalcZero,
+  #[error("VaultAtaBalcZero")]
+  VaultAtaBalcZero,
   #[error("NumOfInstructions")]
   NumOfInstructions,
   #[error("RepayProgId")]
@@ -197,16 +197,20 @@ pub enum Ee {
   RepayDiscriminator,
   #[error("RepayIxSigner")]
   RepayIxSigner,
-  #[error("RepayIxLenderPda")]
-  RepayIxLenderPda,
+  #[error("RepayIxVaultPda")]
+  RepayIxVaultPda,
   #[error("RepayIxLoanArrayPda")]
   RepayIxLoanArrayPda,
-  #[error("RepayIxLenderAta")]
-  RepayIxLenderAta,
-  #[error("RepayIxBorrowerAta")]
-  RepayIxBorrowerAta,
-  #[error("RepayTokenAccountLen")]
-  RepayTokenAccountLen,
+  #[error("RepayIxVaultAta")]
+  RepayIxVaultAta,
+  #[error("RepayIxDebtorAta")]
+  RepayIxDebtorAta,
+  #[error("RepayAtaArrayLen")]
+  RepayAtaArrayLen,
+  #[error("RepayVaultAta")]
+  RepayVaultAta,
+  #[error("RepayVaultBalcNotExpected")]
+  RepayVaultBalcNotExpected,
   //Final variant
   #[error("NotMapped")]
   NotMapped,
@@ -308,16 +312,18 @@ impl TryFrom<u32> for Ee {
       73 => Ok(Ee::AmountsLenVsTokenAcctLen),
       74 => Ok(Ee::BorrowAmountTooBig),
       75 => Ok(Ee::BorrowedAmountIsZero),
-      76 => Ok(Ee::LenderAtaBalcZero),
+      76 => Ok(Ee::VaultAtaBalcZero),
       77 => Ok(Ee::NumOfInstructions),
       78 => Ok(Ee::RepayProgId),
       79 => Ok(Ee::RepayDiscriminator),
       80 => Ok(Ee::RepayIxSigner),
-      81 => Ok(Ee::RepayIxLenderPda),
+      81 => Ok(Ee::RepayIxVaultPda),
       82 => Ok(Ee::RepayIxLoanArrayPda),
-      83 => Ok(Ee::RepayIxLenderAta),
-      84 => Ok(Ee::RepayIxBorrowerAta),
-      85 => Ok(Ee::RepayTokenAccountLen),
+      83 => Ok(Ee::RepayIxVaultAta),
+      84 => Ok(Ee::RepayIxDebtorAta),
+      85 => Ok(Ee::RepayAtaArrayLen),
+      86 => Ok(Ee::RepayVaultAta),
+      87 => Ok(Ee::RepayVaultBalcNotExpected),
       _ => Err(Ee::NotMapped.into()),
     }
   }
@@ -411,16 +417,18 @@ impl ToStr for Ee {
       Ee::AmountsLenVsTokenAcctLen => "AmountsLenVsTokenAcctLen",
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
       Ee::BorrowedAmountIsZero => "BorrowedAmountIsZero",
-      Ee::LenderAtaBalcZero => "LenderAtaBalcZero",
+      Ee::VaultAtaBalcZero => "VaultAtaBalcZero",
       Ee::NumOfInstructions => "NumOfInstructions",
       Ee::RepayProgId => "RepayProgId",
       Ee::RepayDiscriminator => "RepayDiscriminator",
       Ee::RepayIxSigner => "RepayIxSigner",
-      Ee::RepayIxLenderPda => "RepayIxLenderPda",
+      Ee::RepayIxVaultPda => "RepayIxVaultPda",
       Ee::RepayIxLoanArrayPda => "RepayIxLoanArrayPda",
-      Ee::RepayIxLenderAta => "RepayIxLenderAta",
-      Ee::RepayIxBorrowerAta => "RepayIxBorrowerAta",
-      Ee::RepayTokenAccountLen => "RepayTokenAccountLen",
+      Ee::RepayIxVaultAta => "RepayIxVaultAta",
+      Ee::RepayIxDebtorAta => "RepayIxDebtorAta",
+      Ee::RepayAtaArrayLen => "RepayAtaArrayLen",
+      Ee::RepayVaultAta => "RepayVaultAta",
+      Ee::RepayVaultBalcNotExpected => "RepayVaultBalcNotExpected",
       //Final Variant
       Ee::NotMapped => "NotMapped",
     }

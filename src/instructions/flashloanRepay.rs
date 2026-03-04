@@ -1,4 +1,6 @@
-use crate::{amount_from_token_acct, close_pda, instructions::check_signer, Ee, Loan};
+use crate::{
+  amount_from_token_acct, check_pda, close_pda, instructions::check_signer, writable, Ee, Loan,
+};
 use core::convert::TryFrom;
 use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 use pinocchio_log::log;
@@ -6,9 +8,9 @@ use pinocchio_log::log;
 /// FlashloanRepay
 pub struct FlashloanRepay<'a> {
   pub signer: &'a AccountView,
-  pub lender_pda: &'a AccountView,
-  pub loan_record_pda: &'a AccountView,
-  pub token_accounts: &'a [AccountView],
+  pub vault: &'a AccountView,
+  pub loan_array_pda: &'a AccountView,
+  pub ata_array: &'a [AccountView],
 }
 impl<'a> FlashloanRepay<'a> {
   pub const DISCRIMINATOR: &'a u8 = &4;
@@ -17,60 +19,60 @@ impl<'a> FlashloanRepay<'a> {
     log!("FlashloanRepay process()");
     let FlashloanRepay {
       signer,
-      lender_pda: _,
-      loan_record_pda,
-      token_accounts,
+      vault: _,
+      loan_array_pda,
+      ata_array,
     } = self;
-    //Check that all balances have been correctly repaid using the loan account.
-    let loan_records_data = loan_record_pda.try_borrow()?;
-    let loan_num = loan_records_data.len() / size_of::<Loan>();
+
+    let loan_array_data = loan_array_pda.try_borrow()?;
+    let loan_num = loan_array_data.len() / size_of::<Loan>();
     log!("loan_num: {}", loan_num);
 
-    if loan_num.ne(&(token_accounts.len() / 2)) {
-      return Ee::RepayTokenAccountLen.e();
+    if loan_num.ne(&(ata_array.len() / 2)) {
+      return Ee::RepayAtaArrayLen.e();
     }
     log!("Repay 3");
 
-    // Process each pair of token accounts (protocol, borrower) with corresponding amounts
+    // Process each pair of token atas with its amounts
     for i in 0..loan_num {
       log!("Repay loop i = {}", i);
 
-      // Validate that protocol_ata is the same as the one in the loan account
-      let lender_ata = &token_accounts[i];
+      // Validate that vault_ata is the same as the one in the loan account
+      let vault_ata = &ata_array[i * 2];
 
-      if unsafe { *(loan_records_data.as_ptr().add(i * size_of::<Loan>()) as *const [u8; 32]) }
-        != lender_ata.address().to_bytes()
+      if unsafe { *(loan_array_data.as_ptr().add(i * size_of::<Loan>()) as *const [u8; 32]) }
+        != vault_ata.address().to_bytes()
       {
-        return Err(ProgramError::InvalidAccountData);
+        return Ee::RepayVaultAta.e();
       }
-      log!("Repay loan_records_data ok");
+      log!("Repay loan_array_data ok");
       // Check if the loan is already repaid
-      let lender_balc = amount_from_token_acct(&lender_ata)?;
-      log!("Repay lender_balc: {}", lender_balc);
+      let vault_balc = amount_from_token_acct(&vault_ata)?;
+      log!("Repay vault_balc: {}", vault_balc);
 
-      let loan_balance = unsafe {
-        *(loan_records_data
+      let vault_balc_expected = unsafe {
+        *(loan_array_data
           .as_ptr()
           .add(i * size_of::<Loan>() + size_of::<[u8; 32]>()) as *const u64)
       };
-      log!("Repay loan_balance: {}", loan_balance);
+      log!("Repay vault_balc_expected: {}", vault_balc_expected);
 
-      // if lender_balc < loan_balance {
-      //   return Err(ProgramError::InsufficientFunds);
-      // }
+      if vault_balc < vault_balc_expected {
+        return Ee::RepayVaultBalcNotExpected.e();
+      }
     }
     log!("Repay after loop");
 
-    // Close the loan account and give back the lamports to the borrower
-    drop(loan_records_data);
-    close_pda(loan_record_pda, signer)?;
-    log!("Repay: loan_record_pda closed");
+    // Close the loan account and give back the lamports to the debtor
+    drop(loan_array_data);
+    close_pda(loan_array_pda, signer)?;
+    log!("Repay: loan_array_pda closed");
 
     /*unsafe {
-      *signer.try_borrow_mut() += *loan_record_pda.borrow_lamports_unchecked();
-      loan_record_pda.close_unchecked();
+      *signer.try_borrow_mut() += *loan_array_pda.borrow_lamports_unchecked();
+      loan_array_pda.close_unchecked();
     }*/
-    //As you can see, for optimization purposes and by design, the repayment doesn't happen in this instruction. This is because the borrower can choose to repay the token account in another instruction, such as when performing a swap or executing a series of CPIs from their arbitrage program.
+    //As you can see, for optimization purposes and by design, the repayment doesn't happen in this instruction. This is because the debtor can choose to repay the token account in another instruction, such as when performing a swap or executing a series of CPIs from their arbitrage program.
     Ok(())
   }
 }
@@ -82,16 +84,19 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanRepay<'a> {
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
 
-    let [signer, lender_pda, loan_record_pda, token_accounts @ ..] = accounts else {
+    let [signer, vault, loan_array_pda, ata_array @ ..] = accounts else {
       return Err(ProgramError::NotEnoughAccountKeys);
     };
     check_signer(signer)?;
+    writable(vault)?;
+    check_pda(vault)?;
+    writable(loan_array_pda)?;
 
     Ok(Self {
       signer,
-      lender_pda,
-      loan_record_pda,
-      token_accounts,
+      vault,
+      loan_array_pda,
+      ata_array,
     })
   }
 }

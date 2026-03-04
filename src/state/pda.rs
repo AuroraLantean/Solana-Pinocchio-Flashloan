@@ -57,7 +57,7 @@ impl Vault {
 #[derive(Clone, Debug)]
 #[repr(C, packed)]
 pub struct Loan {
-  pub lender_ata: [u8; 32],
+  pub vault_ata: [u8; 32],
   pub balc_plus_fee: u64,
 }
 impl Loan {

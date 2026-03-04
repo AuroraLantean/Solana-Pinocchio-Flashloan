@@ -91,7 +91,7 @@ impl<'a> FlashloanBorrow<'a> {
         vault.address(),
       )
     } {
-      return Ee::RepayIxLenderPda.e();
+      return Ee::RepayIxVaultPda.e();
     }
     if unsafe {
       !address_eq(
@@ -113,7 +113,7 @@ impl<'a> FlashloanBorrow<'a> {
           ata_array[i * 2].address(),
         )
       } {
-        return Ee::RepayIxLenderAta.e();
+        return Ee::RepayIxVaultAta.e();
       }
       if unsafe {
         !address_eq(
@@ -121,13 +121,13 @@ impl<'a> FlashloanBorrow<'a> {
           ata_array[i * 2 + 1].address(),
         )
       } {
-        return Ee::RepayIxBorrowerAta.e();
+        return Ee::RepayIxDebtorAta.e();
       }
     }
     log!("Borrow 10: all accounts Ok");
 
     //-----------== send_tokens
-    //LoanArray is derived from the seed string and borrower.
+    //LoanArray is derived from the seed string and debtor.
     let seeds = [
       Seed::from(LoanArray::SEED),
       Seed::from(signer.address().as_ref()),
@@ -171,25 +171,25 @@ impl<'a> FlashloanBorrow<'a> {
     };
     log!("Borrow 11");
 
-    //loop through all the loans. In each iteration, we get the lender_ata and borrower_ata, calculate the balance due to the protocol, save this data in the loanArray PDA, and transfer the tokens.
+    //loop through all the loans. In each iteration, we get the vault_ata and debtor_ata, calculate the balance due to the protocol, save this data in the loanArray PDA, and transfer the tokens.
     for (i, amount) in amounts.iter().enumerate() {
       log!("Borrow loop token sending: i = {}", i);
-      let lender_ata = &ata_array[i * 2];
-      let borrower_ata = &ata_array[i * 2 + 1];
-      check_ata(lender_ata, vault, mint)?;
-      check_ata(borrower_ata, signer, mint)?;
+      let vault_ata = &ata_array[i * 2];
+      let debtor_ata = &ata_array[i * 2 + 1];
+      check_ata(vault_ata, vault, mint)?;
+      check_ata(debtor_ata, signer, mint)?;
 
-      // Get the lender_ata_balc and add the fee to it so we can save it to the loan account
-      let lender_ata_balc = amount_from_token_acct(lender_ata)?;
-      log!("lender_ata balc: {}", lender_ata_balc);
-      if lender_ata_balc == 0 {
-        return Ee::LenderAtaBalcZero.e();
+      // Get the vault_ata_balc and add the fee to it so we can save it to the loan account
+      let vault_ata_balc = amount_from_token_acct(vault_ata)?;
+      log!("vault_ata balc: {}", vault_ata_balc);
+      if vault_ata_balc == 0 {
+        return Ee::VaultAtaBalcZero.e();
       }
-      if *amount > lender_ata_balc {
+      if *amount > vault_ata_balc {
         return Ee::BorrowAmountTooBig.e();
       }
 
-      let balc_plus_fee = lender_ata_balc
+      let balc_plus_fee = vault_ata_balc
         .checked_add(
           amount
             .checked_mul(fee as u64)
@@ -201,16 +201,16 @@ impl<'a> FlashloanBorrow<'a> {
 
       // Save the Loan to LoanArray
       loan_array[i] = Loan {
-        lender_ata: lender_ata.address().to_bytes(),
+        vault_ata: vault_ata.address().to_bytes(),
         balc_plus_fee,
       };
       log!("to transfer tokens");
 
-      // Transfer the tokens from the lenderPda to the borrower
+      // Transfer the tokens from vault to the debtor
       pinocchio_token::instructions::TransferChecked {
-        from: lender_ata,
+        from: vault_ata,
         mint,
-        to: borrower_ata,
+        to: debtor_ata,
         authority: vault,
         amount: *amount,
         decimals,
@@ -234,7 +234,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       accounts
     else {
       return Err(ProgramError::NotEnoughAccountKeys);
-    }; //lender_ata, user_ata
+    }; //vault_ata, user_ata
     check_signer(signer)?;
     writable(vault)?;
     check_pda(vault)?;
@@ -247,7 +247,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     //check_mint0a(mint, token_program)?;
     check_instruction_sysvar(instruction_sysvar)?;
 
-    // Each loan requires a lender_ata and a borrower_ata
+    // Each loan requires a vault_ata and a debtor_ata
     if (ata_array.len() % 2).ne(&0) || ata_array.len().eq(&0) {
       return Err(Ee::TokenAcctsLength.into());
     }
