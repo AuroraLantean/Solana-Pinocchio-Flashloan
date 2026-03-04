@@ -1,7 +1,10 @@
 //use num_derive::FromPrimitive;
 use pinocchio::{
   error::{ProgramError, ToStr},
-  sysvars::rent::{Rent, RENT_ID},
+  sysvars::{
+    instructions::INSTRUCTIONS_ID,
+    rent::{Rent, RENT_ID},
+  },
   AccountView, Address, ProgramResult,
 };
 use pinocchio_log::log; //logger::log_message
@@ -9,6 +12,8 @@ use pinocchio_token::state::{Mint, TokenAccount};
 //use pinocchio_token_2022::state::{Mint as Mint22, TokenAccount as TokenAccount22};
 //use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use thiserror::Error;
+
+use crate::PROG_ADDR;
 
 //TODO: put errors in error.rs ... https://learn.blueshift.gg/en/courses/pinocchio-for-dummies/pinocchio-errors
 #[derive(Clone, Debug, Eq, Error, PartialEq)] //FromPrimitive
@@ -182,8 +187,8 @@ pub enum Ee {
   BorrowAmountTooBig,
   #[error("BorrowedAmountIsZero")]
   BorrowedAmountIsZero,
-  #[error("LenderPdaBalanceIsZero")]
-  LenderPdaBalanceIsZero,
+  #[error("LenderAtaBalcZero")]
+  LenderAtaBalcZero,
   #[error("NumOfInstructions")]
   NumOfInstructions,
   #[error("RepayProgId")]
@@ -303,7 +308,7 @@ impl TryFrom<u32> for Ee {
       73 => Ok(Ee::AmountsLenVsTokenAcctLen),
       74 => Ok(Ee::BorrowAmountTooBig),
       75 => Ok(Ee::BorrowedAmountIsZero),
-      76 => Ok(Ee::LenderPdaBalanceIsZero),
+      76 => Ok(Ee::LenderAtaBalcZero),
       77 => Ok(Ee::NumOfInstructions),
       78 => Ok(Ee::RepayProgId),
       79 => Ok(Ee::RepayDiscriminator),
@@ -406,7 +411,7 @@ impl ToStr for Ee {
       Ee::AmountsLenVsTokenAcctLen => "AmountsLenVsTokenAcctLen",
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
       Ee::BorrowedAmountIsZero => "BorrowedAmountIsZero",
-      Ee::LenderPdaBalanceIsZero => "LenderPdaBalanceIsZero",
+      Ee::LenderAtaBalcZero => "LenderAtaBalcZero",
       Ee::NumOfInstructions => "NumOfInstructions",
       Ee::RepayProgId => "RepayProgId",
       Ee::RepayDiscriminator => "RepayDiscriminator",
@@ -458,6 +463,8 @@ pub fn amount_from_token_acct(account: &AccountView) -> Result<u64, ProgramError
       ...
   }*/
   let balance = parse_u64(&data[64..72])?;
+  //let from_ata_info = TokenAccount::from_account_view(from_ata)?;
+  //from_ata_info.amount()
   Ok(balance)
 }
 
@@ -470,6 +477,15 @@ pub fn ata_balc(from_ata: &AccountView, amount: u64) -> ProgramResult {
 }
 
 //----------------== PDAs and Other Accounts
+pub fn check_pda(account: &AccountView) -> ProgramResult {
+  if account.lamports() == 0 {
+    return Ee::PdaNoLamport.e();
+  }
+  if !account.owned_by(&PROG_ADDR) {
+    return Ee::ForeignPDA.e();
+  }
+  Ok(())
+}
 pub fn check_ata(ata: &AccountView, owner: &AccountView, mint: &AccountView) -> ProgramResult {
   let ata_len = ata.data_len();
   if ata_len == 0 {
@@ -511,6 +527,12 @@ pub fn check_atoken_gpvbd(account: &AccountView) -> ProgramResult {
 pub fn check_rent_sysvar(account: &AccountView) -> ProgramResult {
   if account.address().ne(&RENT_ID) {
     return Ee::RentSysvar.e();
+  }
+  Ok(())
+}
+pub fn check_instruction_sysvar(account: &AccountView) -> ProgramResult {
+  if account.address().ne(&INSTRUCTIONS_ID) {
+    return Err(ProgramError::UnsupportedSysvar);
   }
   Ok(())
 }

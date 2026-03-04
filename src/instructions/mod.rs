@@ -79,7 +79,7 @@ pub enum ProgramIx {
   #[account(9, writable, name = "borrower_ata", desc = "Borrower ATA")]
   FlashloanBorrow {
     decimals: u8,
-    loan_record_bump: u8,
+    loan_array_bump: u8,
     vault_bump: u8,
     fee: u16,
     //amounts: [u8; _]

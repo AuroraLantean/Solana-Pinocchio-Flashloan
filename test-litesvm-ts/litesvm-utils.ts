@@ -82,7 +82,7 @@ export const findLoanArrayV1 = (user: PublicKey): PdaOut => {
 		[Buffer.from("loan_array"), user.toBuffer()],
 		flashloanProgAddr,
 	);
-	ll(`Loan Record pda: ${pda.toBase58()}, bump: ${bump}`);
+	ll(`LoanArray pda: ${pda.toBase58()}, bump: ${bump}`);
 	return { pda, bump };
 };
 //-------------== Program Methods
@@ -189,7 +189,7 @@ export const flashloan = (
 	//configPda: PublicKey,
 	tokenAccounts: PublicKey[],
 	decimals: number,
-	loanRecordBump: number,
+	loanArrayBump: number,
 	vaultBump: number,
 	fee: number,
 	amounts: bigint[],
@@ -205,7 +205,7 @@ export const flashloan = (
 	const { u64bytes, ixKeyArray } = makeIxKeyArray(tokenAccounts, amounts);
 	const argData = [
 		decimals,
-		loanRecordBump,
+		loanArrayBump,
 		vaultBump,
 		...numToBytes(fee, 16),
 		...u64bytes,

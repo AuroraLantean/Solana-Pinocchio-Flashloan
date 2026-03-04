@@ -58,7 +58,7 @@ impl Vault {
 #[repr(C, packed)]
 pub struct Loan {
   pub lender_ata: [u8; 32],
-  pub balance_with_fee: u64,
+  pub balc_plus_fee: u64,
 }
 impl Loan {
   pub const LEN: usize = core::mem::size_of::<Loan>();
@@ -66,7 +66,7 @@ impl Loan {
 }
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub struct LoanArray {} //array of Loan
+pub struct LoanArray {} //array of Loan. because array length is unknow, we do not specify it here
 impl LoanArray {
   pub const SEED: &[u8] = b"loan_array";
 }
