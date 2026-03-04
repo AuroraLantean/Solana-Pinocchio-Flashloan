@@ -54,6 +54,12 @@ export const fromLam = (amt: number) => BigInt(amt) / baseSOL;
 export const checkDecimals = (decimals: number, decimalName = "decimals") => {
 	if (decimals > 12 || decimals < 0) throw new Error(`${decimalName} invalid`);
 };
+export const checkBump = (value: number, decimalName = "u8 value") => {
+	if (value > 255 || value < 1) throw new Error(`${decimalName} invalid`);
+};
+export const checkFee = (value: number, decimalName = "fee_u16 value") => {
+	if (value > 65535 || value < 1) throw new Error(`${decimalName} invalid`);
+};
 export const checkBigint = (bint: bigint, bigintName = "bigint") => {
 	if (bint <= 0) throw new Error(`${bigintName} invalid`);
 };

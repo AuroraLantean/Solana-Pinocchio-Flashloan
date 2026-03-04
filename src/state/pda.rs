@@ -57,12 +57,12 @@ impl Vault {
 #[derive(Clone, Debug)]
 #[repr(C, packed)]
 pub struct LoanRecord {
-  pub lender_token_acct: [u8; 32],
+  pub lender_ata: [u8; 32],
   pub balance_with_fee: u64,
 }
 impl LoanRecord {
   pub const LEN: usize = core::mem::size_of::<LoanRecord>();
   //pub const LEN: usize = 32 + 8;
 
-  pub const SEED: &[u8] = b"loanrecord";
+  pub const SEED: &[u8] = b"loan_record";
 }

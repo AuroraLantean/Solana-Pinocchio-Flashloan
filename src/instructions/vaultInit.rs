@@ -45,14 +45,14 @@ impl<'a> VaultInit<'a> {
       let lamports = rent.try_minimum_balance(Vault::LEN)?;
 
       log!("Make Vault PDA 2");
-      let fee_seed = fee.to_le_bytes();
+      let fee_bytes = fee.to_le_bytes();
       let seeds = [
         Seed::from(Vault::SEED),
-        //Seed::from(signer.address().as_ref()),
-        Seed::from(&fee_seed),
+        //signer.address().as_ref(),
+        Seed::from(&fee_bytes),
         Seed::from(core::slice::from_ref(&vault_bump)),
       ];
-      let seed_signer = Signer::from(&seeds);
+      let signer_seeds = &[Signer::from(&seeds)];
 
       pinocchio_system::instructions::CreateAccount {
         from: signer,
@@ -61,7 +61,7 @@ impl<'a> VaultInit<'a> {
         space: Vault::LEN as u64,
         owner: &PROG_ADDR,
       }
-      .invoke_signed(&[seed_signer])?;
+      .invoke_signed(signer_seeds)?;
     } else {
       return Ee::VaultExists.e();
     }

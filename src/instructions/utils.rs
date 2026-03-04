@@ -164,6 +164,8 @@ pub enum Ee {
   ClockGet,
   #[error("VaultExists")]
   VaultExists,
+  #[error("Xyz068")]
+  Xyz068,
   #[error("Xyz069")]
   Xyz069,
 
@@ -182,6 +184,8 @@ pub enum Ee {
   BorrowedAmountIsZero,
   #[error("LenderPdaBalanceIsZero")]
   LenderPdaBalanceIsZero,
+  #[error("NumOfInstructions")]
+  NumOfInstructions,
   #[error("RepayProgId")]
   RepayProgId,
   #[error("RepayDiscriminator")]
@@ -245,8 +249,8 @@ impl TryFrom<u32> for Ee {
       31 => Ok(Ee::InputDataBump),
       32 => Ok(Ee::PdaNoLamport),
       33 => Ok(Ee::ForeignPDA),
-      35 => Ok(Ee::VaultDataLengh),
       34 => Ok(Ee::VaultIsForeign),
+      35 => Ok(Ee::VaultDataLengh),
       36 => Ok(Ee::DecimalsValue),
       37 => Ok(Ee::MintDataLen),
       38 => Ok(Ee::MintOrMintAuthority),
@@ -280,8 +284,9 @@ impl TryFrom<u32> for Ee {
       63 => Ok(Ee::DividedByZero),
       64 => Ok(Ee::Remainder),
       65 => Ok(Ee::EmptyData),
-      67 => Ok(Ee::ClockGet),
-      68 => Ok(Ee::VaultExists),
+      66 => Ok(Ee::ClockGet),
+      67 => Ok(Ee::VaultExists),
+      68 => Ok(Ee::Xyz068),
       69 => Ok(Ee::Xyz069),
 
       70 => Ok(Ee::TokenAcctsLength),
@@ -291,10 +296,11 @@ impl TryFrom<u32> for Ee {
       74 => Ok(Ee::BorrowAmountTooBig),
       75 => Ok(Ee::BorrowedAmountIsZero),
       76 => Ok(Ee::LenderPdaBalanceIsZero),
-      77 => Ok(Ee::RepayProgId),
-      78 => Ok(Ee::RepayDiscriminator),
-      79 => Ok(Ee::RepayIxLenderPda),
-      80 => Ok(Ee::RepayTokenAccountLen),
+      77 => Ok(Ee::NumOfInstructions),
+      78 => Ok(Ee::RepayProgId),
+      79 => Ok(Ee::RepayDiscriminator),
+      80 => Ok(Ee::RepayIxLenderPda),
+      81 => Ok(Ee::RepayTokenAccountLen),
       _ => Err(Ee::NotMapped.into()),
     }
   }
@@ -378,6 +384,7 @@ impl ToStr for Ee {
       Ee::EmptyData => "EmptyData",
       Ee::ClockGet => "ClockGet",
       Ee::VaultExists => "VaultExists",
+      Ee::Xyz068 => "Xyz068",
       Ee::Xyz069 => "Xyz069",
 
       //Flashloan
@@ -388,6 +395,7 @@ impl ToStr for Ee {
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
       Ee::BorrowedAmountIsZero => "BorrowedAmountIsZero",
       Ee::LenderPdaBalanceIsZero => "LenderPdaBalanceIsZero",
+      Ee::NumOfInstructions => "NumOfInstructions",
       Ee::RepayProgId => "RepayProgId",
       Ee::RepayDiscriminator => "RepayDiscriminator",
       Ee::RepayIxLenderPda => "RepayIxLenderPda",

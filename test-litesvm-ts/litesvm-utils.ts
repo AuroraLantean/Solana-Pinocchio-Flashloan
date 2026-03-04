@@ -27,7 +27,9 @@ import {
 
 import {
 	checkBigint,
+	checkBump,
 	checkDecimals,
+	checkFee,
 	makeIxKeyArray,
 	numToBytes,
 	zero,
@@ -75,17 +77,12 @@ export const findVaultV1 = (
 	return { pda, bump };
 };
 
-export const findLoanRecordsV1 = (
-	fee: number,
-	pdaName: string,
-	seedStr = "moon_pool",
-	progAddr = flashloanProgAddr,
-): PdaOut => {
+export const findLoanRecordsV1 = (user: PublicKey): PdaOut => {
 	const [pda, bump] = PublicKey.findProgramAddressSync(
-		[Buffer.from(seedStr), Buffer.from(numToBytes(fee, 16))],
-		progAddr,
+		[Buffer.from("loan_record"), user.toBuffer()],
+		flashloanProgAddr,
 	);
-	ll(`${pdaName} pda: ${pda.toBase58()}, bump: ${bump}`);
+	ll(`Loan Record pda: ${pda.toBase58()}, bump: ${bump}`);
 	return { pda, bump };
 };
 //-------------== Program Methods
@@ -97,7 +94,7 @@ export const vaultInit = (
 	vaultBump: number,
 ) => {
 	const disc = 0;
-	if (vaultBump > 255) throw new Error("vault_bump > 255");
+	checkBump(vaultBump, "bump");
 	const argData = [vaultBump, ...numToBytes(fee, 16)];
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
@@ -185,46 +182,45 @@ export const tokLgcDeposit = (
 export const flashloan = (
 	userSigner: Keypair,
 	lenderPda: PublicKey,
-	loanRecordsPda: PublicKey,
+	loanRecordPda: PublicKey,
 	//lenderAta: PublicKey,
 	//userAta: PublicKey,
 	mint: PublicKey,
-	tokenProgram: PublicKey,
 	//configPda: PublicKey,
 	tokenAccounts: PublicKey[],
 	decimals: number,
-	bump: number,
+	loanRecordBump: number,
+	vaultBump: number,
 	fee: number,
 	amounts: bigint[],
+	tokenProg = TOKEN_PROGRAM_ID,
 ) => {
 	const borrow_disc = 3;
-	const _repay_disc = 4;
-	acctIsNull(loanRecordsPda);
-
-	if (decimals < 0 || decimals > 18) throw new Error("decimal out of range");
-	if (bump < 1 || bump > 255) throw new Error("bump out of range");
-	if (fee < 1 || fee > 65535) throw new Error("fee out of range");
+	const repay_disc = 4;
+	acctIsNull(loanRecordPda);
+	checkDecimals(decimals);
+	checkBump(vaultBump, "vaultBump");
+	checkFee(fee, "fee");
 
 	const { u64bytes, ixKeyArray } = makeIxKeyArray(tokenAccounts, amounts);
-	const argData = [decimals, bump, ...numToBytes(fee, 16), ...u64bytes];
+	const argData = [
+		decimals,
+		loanRecordBump,
+		vaultBump,
+		...numToBytes(fee, 16),
+		...u64bytes,
+	];
 
 	const blockhash = svm.latestBlockhash();
-	const ix = new TransactionInstruction({
+	const ix0 = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: lenderPda, isSigner: false, isWritable: false },
-			{ pubkey: loanRecordsPda, isSigner: false, isWritable: true },
+			{ pubkey: lenderPda, isSigner: false, isWritable: true },
+			{ pubkey: loanRecordPda, isSigner: false, isWritable: true },
 			{ pubkey: mint, isSigner: false, isWritable: false },
-			{
-				pubkey: tokenProgram,
-				isSigner: false,
-				isWritable: false,
-			},
-			{
-				pubkey: RentSysvar,
-				isSigner: false,
-				isWritable: false,
-			},
+			{ pubkey: tokenProg, isSigner: false, isWritable: false },
+			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
 			{
 				pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
 				isSigner: false,
@@ -235,7 +231,17 @@ export const flashloan = (
 		programId: flashloanProgAddr,
 		data: Buffer.from([borrow_disc, ...argData]),
 	});
-	sendTxns(svm, blockhash, [ix], [userSigner], "", flashloanProgAddr);
+	const ix1 = new TransactionInstruction({
+		keys: [
+			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+			{ pubkey: lenderPda, isSigner: false, isWritable: true },
+			{ pubkey: loanRecordPda, isSigner: false, isWritable: true },
+			...ixKeyArray,
+		],
+		programId: flashloanProgAddr,
+		data: Buffer.from([repay_disc, ...argData]),
+	});
+	sendTxns(svm, blockhash, [ix0, ix1], [userSigner], "", flashloanProgAddr);
 };
 //-------------== LiteSVM System Methods
 export const sendSol = (signer: Keypair, addrTo: PublicKey, amount: bigint) => {

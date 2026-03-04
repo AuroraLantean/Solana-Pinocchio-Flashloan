@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: <> */
 import { expect, test } from "bun:test";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 //Tutorial: <https://litesvm.github.io/litesvm/tutorial.html>
 import type { Keypair, PublicKey } from "@solana/web3.js";
 import {
@@ -45,12 +44,12 @@ let vault: PublicKey;
 let vaultAta: PublicKey;
 let toAta: PublicKey;
 let fromAta: PublicKey;
-let tokenProgram: PublicKey;
+let _tokenProgram: PublicKey;
 let userAta: PublicKey;
 let tokenAccts: PublicKey[];
 let vaultBump: number;
 let decimals: number;
-let bump: number;
+let _bump: number;
 let fee: number;
 let amt: bigint;
 let amounts: bigint[];
@@ -134,31 +133,29 @@ test("Deposit Legacy Tokens", () => {
 	ataBalCk(toAta, as6zBn(3700), "vault1");
 	ataBalCk(fromAta, as6zBn(6300), "admin ");
 });
-test.skip("Flashloan", () => {
+test("Flashloan", () => {
 	ll("\n------== Flashloan");
 	signerKp = user1Kp;
-	vault = user1;
-	loanRecordsOut = findLoanRecordsV1(fee, "moon_pool");
+	signer = signerKp.publicKey;
+	loanRecordsOut = findLoanRecordsV1(signer);
 	mint = usdcMint;
-	tokenProgram = TOKEN_PROGRAM_ID;
 	decimals = 6;
-	bump = 255;
-	fee = 500;
-	amounts = [100n, 100n];
+	fee = 500; //u16
+	vaultOut = findVaultV1("Vault", fee);
+	vaultAta = getAta(mint, vaultOut.pda);
 	userAta = getAta(mint, signer);
 	tokenAccts = [vaultAta, userAta];
-
-	signer = signerKp.publicKey;
+	amounts = [100n];
 
 	flashloan(
 		signerKp,
-		vault,
+		vaultOut.pda,
 		loanRecordsOut.pda,
 		mint,
-		tokenProgram,
 		tokenAccts,
 		decimals,
-		bump,
+		loanRecordsOut.bump,
+		vaultOut.bump,
 		fee,
 		amounts,
 	);

@@ -3,8 +3,8 @@
 ## Design of The Flashloan
 
 - The Flashloan program has many vault PDAs.
-- Each vault is derived from the seed string and fee as u16.
-- Each vault has its Associated Token Account(ATA) for various mints(token addresses).
+- Each vault is derived from the seed string and fee. Thus each PDA owns only the liquidity associated with that fee rate.
+- Each vault has many Associated Token Accounts(ATAs) for various mints(token addresses).
 
 ## Setup a new Pinocchio project
 
