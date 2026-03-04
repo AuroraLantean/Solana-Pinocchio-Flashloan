@@ -179,22 +179,54 @@ export const tokLgcDeposit = (
 	sendTxns(svm, blockhash, [ix], [userSigner]);
 };
 
+export const loanArgs = (
+	debts: bigint[],
+	feesX100: number[],
+	mint: PublicKey,
+	signer: PublicKey,
+) => {
+	if (debts.length !== feesX100.length)
+		throw new Error("debts length should be the same as feesX100");
+	const userAta = getAta(mint, signer);
+	const loanArrayOut = findLoanArrayV1(signer);
+
+	let repayAmt = 0n;
+	let vaultOut: PdaOut;
+	const repayAmts: bigint[] = [];
+	const vaults: PublicKey[] = [];
+	const tokenAtas: PublicKey[] = [];
+	const vaultBumps: number[] = [];
+	for (const [idx, debt] of debts.entries()) {
+		const fee = feesX100[idx];
+		if (fee === undefined) throw new Error(`feesX100[${idx}] undefined`);
+		repayAmt = (debt * BigInt(fee)) / 10_000n + debt;
+		ll("repayAmt:", repayAmt);
+		repayAmts.push(repayAmt);
+		vaultOut = findVaultV1("Vault", fee);
+		vaults.push(vaultOut.pda);
+		vaultBumps.push(vaultOut.bump);
+		tokenAtas.push(getAta(mint, vaultOut.pda));
+		tokenAtas.push(userAta);
+	}
+	return { repayAmts, vaults, vaultBumps, tokenAtas, loanArrayOut };
+};
 export const flashloan = (
 	userSigner: Keypair,
 	vaultPda: PublicKey,
 	loanArrayPda: PublicKey,
-	//lenderAta: PublicKey,
-	//userAta: PublicKey,
 	mint: PublicKey,
 	//configPda: PublicKey,
-	tokenAccounts: PublicKey[],
+	atas: PublicKey[], //[vaultAta, userAta, ...]
 	decimals: number,
 	loanArrayBump: number,
 	vaultBump: number,
 	fee: number,
-	amounts: bigint[],
+	debts: bigint[],
+	repayAmount: bigint,
 	tokenProg = TOKEN_PROGRAM_ID,
+	atokenProg = ATokenGPvbd,
 ) => {
+	ll("------== flashloan() to invoke Rust");
 	const borrow_disc = 3;
 	const repay_disc = 4;
 	acctIsNull(loanArrayPda);
@@ -202,7 +234,7 @@ export const flashloan = (
 	checkBump(vaultBump, "vaultBump");
 	checkFee(fee, "fee");
 
-	const { u64bytes, ixKeyArray } = makeIxKeyArray(tokenAccounts, amounts);
+	const { u64bytes, ixKeyArray } = makeIxKeyArray(atas, debts);
 	const argData = [
 		decimals,
 		loanArrayBump,
@@ -210,8 +242,31 @@ export const flashloan = (
 		...numToBytes(fee, 16),
 		...u64bytes,
 	];
-
 	const blockhash = svm.latestBlockhash();
+
+	const discDeposit = 2;
+	const vaultAta = atas[0];
+	const userAta = atas[1];
+	checkBigint(repayAmount, "repayAmount");
+	const argDataDeposit = [decimals, ...numToBytes(repayAmount)];
+	const ixDeposit = new TransactionInstruction({
+		keys: [
+			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+			// biome-ignore lint/style/noNonNullAssertion: <>
+			{ pubkey: userAta!, isSigner: false, isWritable: true },
+			// biome-ignore lint/style/noNonNullAssertion: <>
+			{ pubkey: vaultAta!, isSigner: false, isWritable: true },
+			{ pubkey: vaultPda, isSigner: false, isWritable: true }, // true
+			{ pubkey: mint, isSigner: false, isWritable: false },
+			//{ pubkey: configPda, isSigner: false, isWritable: true },
+			{ pubkey: tokenProg, isSigner: false, isWritable: false },
+			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+			{ pubkey: atokenProg, isSigner: false, isWritable: false },
+			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+		],
+		programId: flashloanProgAddr,
+		data: Buffer.from([discDeposit, ...argDataDeposit]),
+	});
 	const ix0 = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
@@ -241,7 +296,14 @@ export const flashloan = (
 		programId: flashloanProgAddr,
 		data: Buffer.from([repay_disc, ...argData]),
 	});
-	sendTxns(svm, blockhash, [ix0, ixLast], [userSigner], "", flashloanProgAddr);
+	sendTxns(
+		svm,
+		blockhash,
+		[ix0, ixDeposit, ixLast],
+		[userSigner],
+		"",
+		flashloanProgAddr,
+	);
 };
 //-------------== LiteSVM System Methods
 export const sendSol = (signer: Keypair, addrTo: PublicKey, amount: bigint) => {

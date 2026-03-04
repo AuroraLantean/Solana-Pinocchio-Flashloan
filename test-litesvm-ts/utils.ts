@@ -108,11 +108,11 @@ export type IxKeyArray = {
 	isSigner: boolean;
 	isWritable: boolean;
 };
-
 export const makeIxKeyArray = (ataArray: PublicKey[], amounts: bigint[]) => {
 	const tokAcctsLen = ataArray.length;
 	const amountsLen = amounts.length;
 	if (tokAcctsLen === 0) throw new Error("tokAcctsLen is zero");
+	if (tokAcctsLen < 2) throw new Error("tokAcctsLen < 2");
 	if (tokAcctsLen % 2 !== 0)
 		throw new Error("ataArray length should be an even number");
 	if (tokAcctsLen / 2 !== amountsLen)

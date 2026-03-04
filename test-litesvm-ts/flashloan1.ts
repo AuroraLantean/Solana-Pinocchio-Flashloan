@@ -6,12 +6,12 @@ import {
 	acctExists,
 	acctIsNull,
 	ataBalCk,
-	findLoanArrayV1,
 	findVaultV1,
 	flashloan,
 	getAta,
 	getRawAcctData,
 	initSolBalc,
+	loanArgs,
 	type PdaOut,
 	setAtaCheck,
 	setMint,
@@ -38,21 +38,22 @@ import {
 let signerKp: Keypair;
 let signer: PublicKey;
 let mint: PublicKey;
-let loanArrayOut: PdaOut;
+let _loanArrayOut: PdaOut;
 let vaultOut: PdaOut;
 let vault: PublicKey;
 let vaultAta: PublicKey;
 let toAta: PublicKey;
 let fromAta: PublicKey;
 let _tokenProgram: PublicKey;
-let userAta: PublicKey;
-let tokenAccts: PublicKey[];
+let _userAta: PublicKey;
+let _tokenAccts: PublicKey[];
 let vaultBump: number;
 let decimals: number;
-let _bump: number;
 let fee: number;
+let fees: number[];
 let amt: bigint;
-let amounts: bigint[];
+let _repayAmount: bigint;
+let debts: bigint[];
 
 let balcBf: bigint | null;
 let _balcAf: bigint | null;
@@ -81,7 +82,7 @@ test("Set USDC Mint and ATAs", () => {
 });
 //jj tts 1
 test("Init Vault", () => {
-	ll("\n------== Init Vault");
+	ll("\n----------== Init Vault");
 	signerKp = user1Kp;
 	fee = 500;
 	vaultOut = findVaultV1("Vault", fee);
@@ -95,7 +96,7 @@ test("Init Vault", () => {
 	expect(rawAcctData[0]).toEqual(vaultBump);
 });
 test.skip("Init Vault ATA", () => {
-	ll("\n------== Init Vault ATA");
+	ll("\n---------== Init Vault ATA");
 	signerKp = user1Kp;
 	fee = 500;
 	vaultOut = findVaultV1("Vault", fee);
@@ -108,7 +109,7 @@ test.skip("Init Vault ATA", () => {
 	acctExists(vaultAta);
 });
 test("Deposit Legacy Tokens", () => {
-	ll("\n------== Deposit Legacy Tokens");
+	ll("\n----------== Deposit Legacy Tokens");
 	signerKp = adminKp;
 	mint = usdcMint;
 	decimals = 6;
@@ -134,30 +135,33 @@ test("Deposit Legacy Tokens", () => {
 	ataBalCk(fromAta, as6zBn(6300), "admin ");
 });
 test("Flashloan", () => {
-	ll("\n------== Flashloan");
+	ll("\n----------== Flashloan");
 	signerKp = user1Kp;
 	signer = signerKp.publicKey;
-	loanArrayOut = findLoanArrayV1(signer);
 	mint = usdcMint;
 	decimals = 6;
-	fee = 500; //u16, to be divided by 10_000
-	vaultOut = findVaultV1("Vault", fee);
-	vaultAta = getAta(mint, vaultOut.pda);
-	userAta = getAta(mint, signer);
-	tokenAccts = [vaultAta, userAta];
-	amounts = [100n];
+
+	debts = [100n];
+	fees = [500]; //u16, to be divided by 10_000
+	const { repayAmts, vaults, vaultBumps, tokenAtas, loanArrayOut } = loanArgs(
+		debts,
+		fees,
+		mint,
+		signer,
+	);
 
 	flashloan(
 		signerKp,
-		vaultOut.pda,
+		vaults[0]!,
 		loanArrayOut.pda,
 		mint,
-		tokenAccts,
+		tokenAtas,
 		decimals,
 		loanArrayOut.bump,
-		vaultOut.bump,
-		fee,
-		amounts,
+		vaultBumps[0]!,
+		fees[0]!,
+		debts,
+		repayAmts[0]!,
 	);
 	//ataBalCk(toAta, amt, "vaultO");
 	//ataBalCk(fromAta, as6zBn(424), "user1 ");
