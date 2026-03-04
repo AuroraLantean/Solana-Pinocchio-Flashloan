@@ -1,4 +1,4 @@
-use crate::{amount_from_token_acct, close_pda, instructions::check_signer, Ee, LoanRecord};
+use crate::{amount_from_token_acct, close_pda, instructions::check_signer, Ee, Loan};
 use core::convert::TryFrom;
 use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 use pinocchio_log::log;
@@ -23,7 +23,7 @@ impl<'a> FlashloanRepay<'a> {
     } = self;
     //Check that all balances have been correctly repaid using the loan account.
     let loan_records_data = loan_record_pda.try_borrow()?;
-    let loan_num = loan_records_data.len() / size_of::<LoanRecord>();
+    let loan_num = loan_records_data.len() / size_of::<Loan>();
     log!("loan_num: {}", loan_num);
 
     if loan_num.ne(&(token_accounts.len() / 2)) {
@@ -38,9 +38,8 @@ impl<'a> FlashloanRepay<'a> {
       // Validate that protocol_ata is the same as the one in the loan account
       let lender_ata = &token_accounts[i];
 
-      if unsafe {
-        *(loan_records_data.as_ptr().add(i * size_of::<LoanRecord>()) as *const [u8; 32])
-      } != lender_ata.address().to_bytes()
+      if unsafe { *(loan_records_data.as_ptr().add(i * size_of::<Loan>()) as *const [u8; 32]) }
+        != lender_ata.address().to_bytes()
       {
         return Err(ProgramError::InvalidAccountData);
       }
@@ -52,7 +51,7 @@ impl<'a> FlashloanRepay<'a> {
       let loan_balance = unsafe {
         *(loan_records_data
           .as_ptr()
-          .add(i * size_of::<LoanRecord>() + size_of::<[u8; 32]>()) as *const u64)
+          .add(i * size_of::<Loan>() + size_of::<[u8; 32]>()) as *const u64)
       };
       log!("Repay loan_balance: {}", loan_balance);
 

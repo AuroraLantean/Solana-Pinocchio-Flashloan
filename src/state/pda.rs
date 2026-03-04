@@ -53,16 +53,20 @@ impl Vault {
     unsafe { Ok(&mut *(pda.borrow_unchecked_mut().as_ptr() as *mut Self)) }
   }
 }
-//temporarily store loan record
+//This is NOT a PDA, but a struct to be saved inside LoanArray PDA
 #[derive(Clone, Debug)]
 #[repr(C, packed)]
-pub struct LoanRecord {
+pub struct Loan {
   pub lender_ata: [u8; 32],
   pub balance_with_fee: u64,
 }
-impl LoanRecord {
-  pub const LEN: usize = core::mem::size_of::<LoanRecord>();
+impl Loan {
+  pub const LEN: usize = core::mem::size_of::<Loan>();
   //pub const LEN: usize = 32 + 8;
-
-  pub const SEED: &[u8] = b"loan_record";
+}
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub struct LoanArray {} //array of Loan
+impl LoanArray {
+  pub const SEED: &[u8] = b"loan_array";
 }

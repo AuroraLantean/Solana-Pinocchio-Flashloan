@@ -109,12 +109,12 @@ export type IxKeyArray = {
 	isWritable: boolean;
 };
 
-export const makeIxKeyArray = (tokenAccts: PublicKey[], amounts: bigint[]) => {
-	const tokAcctsLen = tokenAccts.length;
+export const makeIxKeyArray = (ataArray: PublicKey[], amounts: bigint[]) => {
+	const tokAcctsLen = ataArray.length;
 	const amountsLen = amounts.length;
 	if (tokAcctsLen === 0) throw new Error("tokAcctsLen is zero");
 	if (tokAcctsLen % 2 !== 0)
-		throw new Error("tokenAccts length should be an even number");
+		throw new Error("ataArray length should be an even number");
 	if (tokAcctsLen / 2 !== amountsLen)
 		throw new Error("amounts length should match tokAcctLen/2");
 
@@ -130,29 +130,28 @@ export const makeIxKeyArray = (tokenAccts: PublicKey[], amounts: bigint[]) => {
 		if (amount === 0n) throw new Error(`amount at {i} is zero`);
 
 		u64bytes.push(...numToBytes(amount, 64));
-		const lenderTokAcct = tokenAccts[i * 2];
-		const borrowerTokAcct = tokenAccts[i * 2 + 1];
-		if (lenderTokAcct === undefined) throw new Error("lenderTokAcct undefined");
-		if (borrowerTokAcct === undefined)
-			throw new Error("borrowerTokAcct undefined");
+		const lenderAta = ataArray[i * 2];
+		const borrowerAta = ataArray[i * 2 + 1];
+		if (lenderAta === undefined) throw new Error("lenderAta undefined");
+		if (borrowerAta === undefined) throw new Error("borrowerAta undefined");
 
-		acctExists(lenderTokAcct);
-		ll("lenderTokAcct exists");
-		acctExists(borrowerTokAcct);
-		ll("borrowerTokAcct exists");
+		acctExists(lenderAta);
+		ll("lenderAta exists");
+		acctExists(borrowerAta);
+		ll("borrowerAta exists");
 
-		lenderTokBalc = ataBalc(lenderTokAcct, "lenderTokAcct", true);
+		lenderTokBalc = ataBalc(lenderAta, "lenderAta", true);
 		if (lenderTokBalc === 0n) throw new Error("lenderTokBalc is zero");
 		if (amount > lenderTokBalc)
 			throw new Error("borrowed amount > lenderTokBalc");
 
 		ixKeyArray.push({
-			pubkey: lenderTokAcct,
+			pubkey: lenderAta,
 			isSigner: false,
 			isWritable: true,
 		});
 		ixKeyArray.push({
-			pubkey: borrowerTokAcct,
+			pubkey: borrowerAta,
 			isSigner: false,
 			isWritable: true,
 		});

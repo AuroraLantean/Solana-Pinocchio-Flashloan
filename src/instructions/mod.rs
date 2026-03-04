@@ -69,14 +69,14 @@ pub enum ProgramIx {
   /// 3 FlashloanBorrow
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   #[account(1, writable, name = "lender_pda", desc = "Lender PDA")]
-  #[account(2, writable, name = "loan_record_pda", desc = "Loan Record PDA")]
+  #[account(2, writable, name = "loan_array_pda", desc = "Loan Array PDA")]
   #[account(3, name = "mint", desc = "Token Mint")]
   #[account(4, name = "token_prog", desc = "Token Program")]
   #[account(5, name = "system_program", desc = "System Program")]
   #[account(6, name = "rent_sysvar", desc = "RentSysvar")]
   #[account(7, name = "instruction_sysvar", desc = "Instruction Sysvar")]
-  #[account(8, writable, name = "from_ata", desc = "From ATA")]
-  #[account(9, writable, name = "to_ata", desc = "To ATA")]
+  #[account(8, writable, name = "lender_ata", desc = "Lender ATA")]
+  #[account(9, writable, name = "borrower_ata", desc = "Borrower ATA")]
   FlashloanBorrow {
     decimals: u8,
     loan_record_bump: u8,
@@ -89,9 +89,9 @@ pub enum ProgramIx {
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   //#[account(1, writable, name = "config_pda", desc = "Config PDA")]
   #[account(1, writable, name = "lender_pda", desc = "Lender PDA")]
-  #[account(2, writable, name = "loan_record_pda", desc = "Loan Record PDA")]
-  #[account(3, writable, name = "from_ata", desc = "From ATA")]
-  #[account(4, writable, name = "to_ata", desc = "To ATA")]
+  #[account(2, writable, name = "loan_array_pda", desc = "Loan Array PDA")]
+  #[account(3, writable, name = "lender_ata", desc = "Lender ATA")]
+  #[account(4, writable, name = "borrower_ata", desc = "Borrower ATA")]
   FlashloanRepay { decimals: u8, bump: u8, fee: u16 },
   //---------------== Admin PDA
   //---------------== User PDA

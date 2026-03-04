@@ -6,7 +6,7 @@ import {
 	acctExists,
 	acctIsNull,
 	ataBalCk,
-	findLoanRecordsV1,
+	findLoanArrayV1,
 	findVaultV1,
 	flashloan,
 	getAta,
@@ -38,7 +38,7 @@ import {
 let signerKp: Keypair;
 let signer: PublicKey;
 let mint: PublicKey;
-let loanRecordsOut: PdaOut;
+let loanArrayOut: PdaOut;
 let vaultOut: PdaOut;
 let vault: PublicKey;
 let vaultAta: PublicKey;
@@ -137,7 +137,7 @@ test("Flashloan", () => {
 	ll("\n------== Flashloan");
 	signerKp = user1Kp;
 	signer = signerKp.publicKey;
-	loanRecordsOut = findLoanRecordsV1(signer);
+	loanArrayOut = findLoanArrayV1(signer);
 	mint = usdcMint;
 	decimals = 6;
 	fee = 500; //u16
@@ -150,11 +150,11 @@ test("Flashloan", () => {
 	flashloan(
 		signerKp,
 		vaultOut.pda,
-		loanRecordsOut.pda,
+		loanArrayOut.pda,
 		mint,
 		tokenAccts,
 		decimals,
-		loanRecordsOut.bump,
+		loanArrayOut.bump,
 		vaultOut.bump,
 		fee,
 		amounts,

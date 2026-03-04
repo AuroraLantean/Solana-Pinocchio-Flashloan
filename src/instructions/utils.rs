@@ -172,8 +172,8 @@ pub enum Ee {
   //Flashloan
   #[error("TokenAcctsLength")]
   TokenAcctsLength,
-  #[error("LoanRecordAcctHasData")]
-  LoanRecordAcctHasData,
+  #[error("LoanArrayHasData")]
+  LoanArrayHasData,
   #[error("DataArgLenForU64")]
   DataArgLenForU64,
   #[error("AmountsLenVsTokenAcctLen")]
@@ -190,8 +190,16 @@ pub enum Ee {
   RepayProgId,
   #[error("RepayDiscriminator")]
   RepayDiscriminator,
+  #[error("RepayIxSigner")]
+  RepayIxSigner,
   #[error("RepayIxLenderPda")]
   RepayIxLenderPda,
+  #[error("RepayIxLoanArrayPda")]
+  RepayIxLoanArrayPda,
+  #[error("RepayIxLenderAta")]
+  RepayIxLenderAta,
+  #[error("RepayIxBorrowerAta")]
+  RepayIxBorrowerAta,
   #[error("RepayTokenAccountLen")]
   RepayTokenAccountLen,
   //Final variant
@@ -290,7 +298,7 @@ impl TryFrom<u32> for Ee {
       69 => Ok(Ee::Xyz069),
 
       70 => Ok(Ee::TokenAcctsLength),
-      71 => Ok(Ee::LoanRecordAcctHasData),
+      71 => Ok(Ee::LoanArrayHasData),
       72 => Ok(Ee::DataArgLenForU64),
       73 => Ok(Ee::AmountsLenVsTokenAcctLen),
       74 => Ok(Ee::BorrowAmountTooBig),
@@ -299,8 +307,12 @@ impl TryFrom<u32> for Ee {
       77 => Ok(Ee::NumOfInstructions),
       78 => Ok(Ee::RepayProgId),
       79 => Ok(Ee::RepayDiscriminator),
-      80 => Ok(Ee::RepayIxLenderPda),
-      81 => Ok(Ee::RepayTokenAccountLen),
+      80 => Ok(Ee::RepayIxSigner),
+      81 => Ok(Ee::RepayIxLenderPda),
+      82 => Ok(Ee::RepayIxLoanArrayPda),
+      83 => Ok(Ee::RepayIxLenderAta),
+      84 => Ok(Ee::RepayIxBorrowerAta),
+      85 => Ok(Ee::RepayTokenAccountLen),
       _ => Err(Ee::NotMapped.into()),
     }
   }
@@ -389,7 +401,7 @@ impl ToStr for Ee {
 
       //Flashloan
       Ee::TokenAcctsLength => "TokenAcctsLength",
-      Ee::LoanRecordAcctHasData => "LoanRecordAcctHasData",
+      Ee::LoanArrayHasData => "LoanArrayHasData",
       Ee::DataArgLenForU64 => "DataArgLenForU64",
       Ee::AmountsLenVsTokenAcctLen => "AmountsLenVsTokenAcctLen",
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
@@ -398,7 +410,11 @@ impl ToStr for Ee {
       Ee::NumOfInstructions => "NumOfInstructions",
       Ee::RepayProgId => "RepayProgId",
       Ee::RepayDiscriminator => "RepayDiscriminator",
+      Ee::RepayIxSigner => "RepayIxSigner",
       Ee::RepayIxLenderPda => "RepayIxLenderPda",
+      Ee::RepayIxLoanArrayPda => "RepayIxLoanArrayPda",
+      Ee::RepayIxLenderAta => "RepayIxLenderAta",
+      Ee::RepayIxBorrowerAta => "RepayIxBorrowerAta",
       Ee::RepayTokenAccountLen => "RepayTokenAccountLen",
       //Final Variant
       Ee::NotMapped => "NotMapped",

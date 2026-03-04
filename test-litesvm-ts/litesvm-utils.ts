@@ -77,9 +77,9 @@ export const findVaultV1 = (
 	return { pda, bump };
 };
 
-export const findLoanRecordsV1 = (user: PublicKey): PdaOut => {
+export const findLoanArrayV1 = (user: PublicKey): PdaOut => {
 	const [pda, bump] = PublicKey.findProgramAddressSync(
-		[Buffer.from("loan_record"), user.toBuffer()],
+		[Buffer.from("loan_array"), user.toBuffer()],
 		flashloanProgAddr,
 	);
 	ll(`Loan Record pda: ${pda.toBase58()}, bump: ${bump}`);
@@ -181,8 +181,8 @@ export const tokLgcDeposit = (
 
 export const flashloan = (
 	userSigner: Keypair,
-	lenderPda: PublicKey,
-	loanRecordPda: PublicKey,
+	vaultPda: PublicKey,
+	loanArrayPda: PublicKey,
 	//lenderAta: PublicKey,
 	//userAta: PublicKey,
 	mint: PublicKey,
@@ -197,7 +197,7 @@ export const flashloan = (
 ) => {
 	const borrow_disc = 3;
 	const repay_disc = 4;
-	acctIsNull(loanRecordPda);
+	acctIsNull(loanArrayPda);
 	checkDecimals(decimals);
 	checkBump(vaultBump, "vaultBump");
 	checkFee(fee, "fee");
@@ -215,8 +215,8 @@ export const flashloan = (
 	const ix0 = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: lenderPda, isSigner: false, isWritable: true },
-			{ pubkey: loanRecordPda, isSigner: false, isWritable: true },
+			{ pubkey: vaultPda, isSigner: false, isWritable: true },
+			{ pubkey: loanArrayPda, isSigner: false, isWritable: true },
 			{ pubkey: mint, isSigner: false, isWritable: false },
 			{ pubkey: tokenProg, isSigner: false, isWritable: false },
 			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
@@ -234,8 +234,8 @@ export const flashloan = (
 	const ix1 = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: lenderPda, isSigner: false, isWritable: true },
-			{ pubkey: loanRecordPda, isSigner: false, isWritable: true },
+			{ pubkey: vaultPda, isSigner: false, isWritable: true },
+			{ pubkey: loanArrayPda, isSigner: false, isWritable: true },
 			...ixKeyArray,
 		],
 		programId: flashloanProgAddr,
