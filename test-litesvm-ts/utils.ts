@@ -108,54 +108,64 @@ export type IxKeyArray = {
 	isSigner: boolean;
 	isWritable: boolean;
 };
-export const makeIxKeyArray = (ataArray: PublicKey[], amounts: bigint[]) => {
-	const tokAcctsLen = ataArray.length;
+export const checkTxnAccts = (txnAcctsLen: number, amountsLen: number) => {
+	if (txnAcctsLen < 3) throw new Error("txnAcctsLen < 3");
+	if (txnAcctsLen % 3 !== 0)
+		throw new Error("txnAccts length should be a multiple of 3");
+	if (txnAcctsLen / 3 !== amountsLen)
+		throw new Error("amounts length should match tokAcctLen/3");
+};
+export const makeIxKeyArray = (txnAccts: PublicKey[], amounts: bigint[]) => {
+	const txnAcctsLen = txnAccts.length;
 	const amountsLen = amounts.length;
-	if (tokAcctsLen === 0) throw new Error("tokAcctsLen is zero");
-	if (tokAcctsLen < 2) throw new Error("tokAcctsLen < 2");
-	if (tokAcctsLen % 2 !== 0)
-		throw new Error("ataArray length should be an even number");
-	if (tokAcctsLen / 2 !== amountsLen)
-		throw new Error("amounts length should match tokAcctLen/2");
+	checkTxnAccts(txnAcctsLen, amountsLen);
 
 	ll("loop over amountsLen index...");
 	const u64bytes: number[] = [];
 	const ixKeyArray: IxKeyArray[] = [];
-	let amount = 0n;
-	let lenderTokBalc = 0n;
-	for (let i = 0; i < amountsLen; i++) {
-		ll("index = ", i);
-		if (amounts[i] === undefined) throw new Error("amounts[i] undefined");
-		amount = amounts[i] ?? 0n;
+	let vaultTokBalc = 0n;
+	for (const [i, amount] of amounts.entries()) {
+		ll("amount: ", amount);
+		if (amount === undefined) throw new Error("amounts[i] undefined");
 		if (amount === 0n) throw new Error(`amount at {i} is zero`);
 
 		u64bytes.push(...numToBytes(amount, 64));
-		const lenderAta = ataArray[i * 2];
-		const borrowerAta = ataArray[i * 2 + 1];
-		if (lenderAta === undefined) throw new Error("lenderAta undefined");
-		if (borrowerAta === undefined) throw new Error("borrowerAta undefined");
+		const vaultPda = txnAccts[i * 3];
+		const vaultAta = txnAccts[i * 3 + 1];
+		const userAta = txnAccts[i * 3 + 2];
+		if (vaultPda === undefined) throw new Error("vaultPda undefined");
+		if (vaultAta === undefined) throw new Error("vaultAta undefined");
+		if (userAta === undefined) throw new Error("userAta undefined");
 
-		acctExists(lenderAta);
-		ll("lenderAta exists");
-		acctExists(borrowerAta);
-		ll("borrowerAta exists");
+		acctExists(vaultPda);
+		ll("vaultPda exists");
+		acctExists(vaultAta);
+		ll("vaultAta exists");
+		acctExists(userAta);
+		ll("userAta exists");
 
-		lenderTokBalc = ataBalc(lenderAta, "lenderAta", true);
-		if (lenderTokBalc === 0n) throw new Error("lenderTokBalc is zero");
-		if (amount > lenderTokBalc)
-			throw new Error("borrowed amount > lenderTokBalc");
+		vaultTokBalc = ataBalc(vaultAta, "vaultAta", true);
+		if (vaultTokBalc === 0n) throw new Error("vaultTokBalc is zero");
+		if (amount > vaultTokBalc)
+			throw new Error("borrowed amount > vaultTokBalc");
 
 		ixKeyArray.push({
-			pubkey: lenderAta,
+			pubkey: vaultPda,
 			isSigner: false,
 			isWritable: true,
 		});
 		ixKeyArray.push({
-			pubkey: borrowerAta,
+			pubkey: vaultAta,
+			isSigner: false,
+			isWritable: true,
+		});
+		ixKeyArray.push({
+			pubkey: userAta,
 			isSigner: false,
 			isWritable: true,
 		});
 	}
+	ll("makeIxKeyArray successful");
 	return { u64bytes, ixKeyArray };
 };
 //--------------== Bytes

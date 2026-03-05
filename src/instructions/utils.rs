@@ -175,14 +175,14 @@ pub enum Ee {
   Xyz069,
 
   //Flashloan
-  #[error("TokenAcctsLength")]
-  TokenAcctsLength,
+  #[error("TxnAcctsLength")]
+  TxnAcctsLength,
   #[error("LoansPdaHasData")]
   LoansPdaHasData,
   #[error("DataArgLenForU64")]
   DataArgLenForU64,
-  #[error("AmountsLenVsTokenAcctLen")]
-  AmountsLenVsTokenAcctLen,
+  #[error("AmountsLenVsTxnAcctsLen")]
+  AmountsLenVsTxnAcctsLen,
   #[error("BorrowAmountTooBig")]
   BorrowAmountTooBig,
   #[error("BorrowedAmountIsZero")]
@@ -205,8 +205,8 @@ pub enum Ee {
   RepayIxVaultAta,
   #[error("RepayIxDebtorAta")]
   RepayIxDebtorAta,
-  #[error("RepayAtaArrayLen")]
-  RepayAtaArrayLen,
+  #[error("RepayTxnAcctsLen")]
+  RepayTxnAcctsLen,
   #[error("RepayVaultAta")]
   RepayVaultAta,
   #[error("RepayVaultBalcNotExpected")]
@@ -306,10 +306,10 @@ impl TryFrom<u32> for Ee {
       68 => Ok(Ee::Xyz068),
       69 => Ok(Ee::Xyz069),
 
-      70 => Ok(Ee::TokenAcctsLength),
+      70 => Ok(Ee::TxnAcctsLength),
       71 => Ok(Ee::LoansPdaHasData),
       72 => Ok(Ee::DataArgLenForU64),
-      73 => Ok(Ee::AmountsLenVsTokenAcctLen),
+      73 => Ok(Ee::AmountsLenVsTxnAcctsLen),
       74 => Ok(Ee::BorrowAmountTooBig),
       75 => Ok(Ee::BorrowedAmountIsZero),
       76 => Ok(Ee::VaultAtaBalcZero),
@@ -321,7 +321,7 @@ impl TryFrom<u32> for Ee {
       82 => Ok(Ee::RepayIxLoansPda),
       83 => Ok(Ee::RepayIxVaultAta),
       84 => Ok(Ee::RepayIxDebtorAta),
-      85 => Ok(Ee::RepayAtaArrayLen),
+      85 => Ok(Ee::RepayTxnAcctsLen),
       86 => Ok(Ee::RepayVaultAta),
       87 => Ok(Ee::RepayVaultBalcNotExpected),
       _ => Err(Ee::NotMapped.into()),
@@ -411,10 +411,10 @@ impl ToStr for Ee {
       Ee::Xyz069 => "Xyz069",
 
       //Flashloan
-      Ee::TokenAcctsLength => "TokenAcctsLength",
+      Ee::TxnAcctsLength => "TxnAcctsLength",
       Ee::LoansPdaHasData => "LoansPdaHasData",
       Ee::DataArgLenForU64 => "DataArgLenForU64",
-      Ee::AmountsLenVsTokenAcctLen => "AmountsLenVsTokenAcctLen",
+      Ee::AmountsLenVsTxnAcctsLen => "AmountsLenVsTxnAcctsLen",
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
       Ee::BorrowedAmountIsZero => "BorrowedAmountIsZero",
       Ee::VaultAtaBalcZero => "VaultAtaBalcZero",
@@ -426,7 +426,7 @@ impl ToStr for Ee {
       Ee::RepayIxLoansPda => "RepayIxLoansPda",
       Ee::RepayIxVaultAta => "RepayIxVaultAta",
       Ee::RepayIxDebtorAta => "RepayIxDebtorAta",
-      Ee::RepayAtaArrayLen => "RepayAtaArrayLen",
+      Ee::RepayTxnAcctsLen => "RepayTxnAcctsLen",
       Ee::RepayVaultAta => "RepayVaultAta",
       Ee::RepayVaultBalcNotExpected => "RepayVaultBalcNotExpected",
       //Final Variant

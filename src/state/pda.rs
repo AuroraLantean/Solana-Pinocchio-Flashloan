@@ -68,5 +68,5 @@ impl Loan {
 #[repr(C)]
 pub struct Loans {} //array of Loan. because array length is unknow, we do not specify it here
 impl Loans {
-  pub const SEED: &[u8] = b"loan_array";
+  pub const SEED: &[u8] = b"loans";
 }

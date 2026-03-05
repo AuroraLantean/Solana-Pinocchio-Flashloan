@@ -6,13 +6,13 @@ import {
 	acctExists,
 	acctIsNull,
 	ataBalCk,
-	ataBalc,
+	atasBalc,
 	findVaultV1,
 	flashloan,
+	flashloanArgs,
 	getAta,
 	getRawAcctData,
 	initSolBalc,
-	loanArgs,
 	type PdaOut,
 	setAtaCheck,
 	setMint,
@@ -52,8 +52,9 @@ let fee: number;
 let fees: number[];
 let amt: bigint;
 let debts: bigint[];
+let balcs: bigint[];
 
-let balcBf: bigint;
+let _balcBf: bigint;
 let _balcAf: bigint;
 const initUsdcBalc = bigintAmt(10000, 6);
 //co_balcAfultRent = 1002240n; //from Rust
@@ -140,26 +141,27 @@ test("Flashloan", () => {
 
 	debts = [100n];
 	fees = [500]; //u16, to be divided by 10_000
-	const { repayAmts, vaults, vaultBumps, tokenAtas, loansOut } = loanArgs(
+	const { repayAmts, vaultBumps, txnAccts, loansPdaOut } = flashloanArgs(
 		debts,
 		fees,
 		mint,
 		signerKp.publicKey,
 	);
-	balcBf = ataBalc(tokenAtas[0]!, "vault");
+	balcs = atasBalc(txnAccts, debts.length);
+	const balcBf = balcs[0];
 	flashloan(
 		signerKp,
-		vaults[0]!,
-		loansOut.pda,
+		//vaults[0]!,
+		loansPdaOut.pda,
 		mint,
-		tokenAtas,
+		txnAccts,
 		decimals,
-		loansOut.bump,
+		loansPdaOut.bump,
 		vaultBumps[0]!,
 		fees[0]!,
 		debts,
 		repayAmts[0]!,
 	);
-	ataBalCk(tokenAtas[0]!, balcBf + repayAmts[0]! - BigInt(debts[0]!), "vault");
+	ataBalCk(txnAccts[1]!, balcBf + repayAmts[0]! - BigInt(debts[0]!), "vault");
 	//ataBalCk(fromAta, as6zBn(424), "user1 ");
 });

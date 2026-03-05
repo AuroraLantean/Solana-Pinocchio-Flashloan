@@ -16,7 +16,6 @@ use pinocchio_log::log;
 /// FlashloanBorrow
 pub struct FlashloanBorrow<'a> {
   pub signer: &'a AccountView,
-  pub vault: &'a AccountView,
   pub loans_pda: &'a AccountView,
   pub mint: &'a AccountView,
   pub instruction_sysvar: &'a AccountView,
@@ -24,7 +23,7 @@ pub struct FlashloanBorrow<'a> {
   //pub token_program: &'a AccountView,
   pub system_program: &'a AccountView,
   pub rent_sysvar: &'a AccountView,
-  pub accounts: &'a [AccountView],
+  pub txn_accts: &'a [AccountView],
   pub decimals: u8,
   pub loans_bump_a: [u8; 1],
   pub vault_bump_a: [u8; 1],
@@ -38,7 +37,6 @@ impl<'a> FlashloanBorrow<'a> {
     log!("FlashloanBorrow process()");
     let FlashloanBorrow {
       signer,
-      vault,
       loans_pda,
       mint,
       instruction_sysvar,
@@ -46,7 +44,7 @@ impl<'a> FlashloanBorrow<'a> {
       //token_program: _,
       system_program: _,
       rent_sysvar,
-      accounts,
+      txn_accts,
       decimals,
       loans_bump_a,
       vault_bump_a,
@@ -85,17 +83,10 @@ impl<'a> FlashloanBorrow<'a> {
     } {
       return Ee::RepayIxSigner.e();
     }
+
     if unsafe {
       !address_eq(
         &repay_ix.get_instruction_account_at_unchecked(1).key,
-        vault.address(),
-      )
-    } {
-      return Ee::RepayIxVaultPda.e();
-    }
-    if unsafe {
-      !address_eq(
-        &repay_ix.get_instruction_account_at_unchecked(2).key,
         loans_pda.address(),
       )
     } {
@@ -107,24 +98,33 @@ impl<'a> FlashloanBorrow<'a> {
       if *amount == 0 {
         return Ee::BorrowedAmountIsZero.e();
       }
+      //check vault
       if unsafe {
         !address_eq(
-          &repay_ix.get_instruction_account_at_unchecked(i + 3).key,
-          accounts[i * 2].address(),
+          &repay_ix.get_instruction_account_at_unchecked(i * 3 + 2).key,
+          txn_accts[i * 3].address(),
+        )
+      } {
+        return Ee::RepayIxVaultPda.e();
+      }
+      if unsafe {
+        !address_eq(
+          &repay_ix.get_instruction_account_at_unchecked(i * 3 + 3).key,
+          txn_accts[i * 3 + 1].address(),
         )
       } {
         return Ee::RepayIxVaultAta.e();
       }
       if unsafe {
         !address_eq(
-          &repay_ix.get_instruction_account_at_unchecked(i + 4).key,
-          accounts[i * 2 + 1].address(),
+          &repay_ix.get_instruction_account_at_unchecked(i * 3 + 4).key,
+          txn_accts[i * 3 + 2].address(),
         )
       } {
         return Ee::RepayIxDebtorAta.e();
       }
     }
-    log!("Borrow 10: all accounts Ok");
+    log!("Borrow 10: all txn_accts Ok");
 
     //-----------== send_tokens
     //Loans is derived from the seed string and debtor.
@@ -174,10 +174,9 @@ impl<'a> FlashloanBorrow<'a> {
     //loop through all the loans. In each iteration, we get the vault_ata and debtor_ata, calculate the balance due to the protocol, save this data in the loansPDA, and transfer the tokens.
     for (i, amount) in amounts.iter().enumerate() {
       log!("Borrow loop token sending: i = {}", i);
-      let vault_ata = &accounts[i * 2];
-      let debtor_ata = &accounts[i * 2 + 1];
-      check_ata(vault_ata, vault, mint)?;
-      check_ata(debtor_ata, signer, mint)?;
+      let vault = &txn_accts[i * 3];
+      let vault_ata = &txn_accts[i * 3 + 1];
+      let debtor_ata = &txn_accts[i * 3 + 2];
 
       // Get the vault_ata_balc and add the fee to it so we can save it to the loan account
       let vault_ata_balc = amount_from_token_acct(vault_ata)?;
@@ -228,16 +227,13 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     log!("FlashloanBorrow try_from");
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
-    //let instruction_data = LoanInstructionData::try_from(data)?;
 
-    let [signer, vault, loans_pda, mint, token_program, system_program, rent_sysvar, instruction_sysvar, accounts @ ..] =
+    let [signer, loans_pda, mint, token_program, system_program, rent_sysvar, instruction_sysvar, txn_accts @ ..] =
       accounts
     else {
       return Err(ProgramError::NotEnoughAccountKeys);
-    }; //vault_ata, user_ata
+    };
     check_signer(signer)?;
-    writable(vault)?;
-    check_pda(vault)?;
     writable(loans_pda)?;
     executable(token_program)?;
     check_sysprog(system_program)?;
@@ -247,9 +243,9 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     //check_mint0a(mint, token_program)?;
     check_instruction_sysvar(instruction_sysvar)?;
 
-    // Each loan requires a vault_ata and a debtor_ata
-    if (accounts.len() % 2).ne(&0) || accounts.len().eq(&0) {
-      return Err(Ee::TokenAcctsLength.into());
+    // Each loan requires a vault, vault_ata, and a debtor_ata
+    if (txn_accts.len() % 3).ne(&0) || txn_accts.len().eq(&0) {
+      return Err(Ee::TxnAcctsLength.into());
     }
     if loans_pda.try_borrow()?.len().ne(&0) {
       return Err(Ee::LoansPdaHasData.into());
@@ -279,12 +275,23 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       core::slice::from_raw_parts(data.as_ptr() as *const u64, data.len() / size_of::<u64>())
     };
     log!("amounts: {}", amounts);
-    if amounts.len() != accounts.len() / 2 {
-      return Err(Ee::AmountsLenVsTokenAcctLen.into());
+    if amounts.len() != txn_accts.len() / 3 {
+      return Err(Ee::AmountsLenVsTxnAcctsLen.into());
+    }
+
+    for (i, _) in amounts.iter().enumerate() {
+      log!("tryFrom loop : i = {}", i);
+      let vault = &txn_accts[i * 3];
+      let vault_ata = &txn_accts[i * 3 + 1];
+      let debtor_ata = &txn_accts[i * 3 + 2];
+
+      writable(vault)?;
+      check_pda(vault)?;
+      check_ata(vault_ata, vault, mint)?;
+      check_ata(debtor_ata, signer, mint)?;
     }
     Ok(Self {
       signer,
-      vault,
       loans_pda,
       mint,
       instruction_sysvar,
@@ -292,7 +299,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       //token_program,
       system_program,
       rent_sysvar,
-      accounts,
+      txn_accts,
       decimals: *decimals,
       loans_bump_a: [*loans_bump],
       vault_bump_a: [*vault_bump],
