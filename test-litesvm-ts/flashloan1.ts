@@ -6,6 +6,7 @@ import {
 	acctExists,
 	acctIsNull,
 	ataBalCk,
+	ataBalc,
 	findVaultV1,
 	flashloan,
 	getAta,
@@ -38,7 +39,6 @@ import {
 let signerKp: Keypair;
 let signer: PublicKey;
 let mint: PublicKey;
-let _loanArrayOut: PdaOut;
 let vaultOut: PdaOut;
 let vault: PublicKey;
 let vaultAta: PublicKey;
@@ -46,23 +46,21 @@ let toAta: PublicKey;
 let fromAta: PublicKey;
 let _tokenProgram: PublicKey;
 let _userAta: PublicKey;
-let _tokenAccts: PublicKey[];
 let vaultBump: number;
 let decimals: number;
 let fee: number;
 let fees: number[];
 let amt: bigint;
-let _repayAmount: bigint;
 let debts: bigint[];
 
-let balcBf: bigint | null;
-let _balcAf: bigint | null;
+let balcBf: bigint;
+let _balcAf: bigint;
 const initUsdcBalc = bigintAmt(10000, 6);
 //co_balcAfultRent = 1002240n; //from Rust
 
-balcBf = svm.getBalance(admin);
-ll("admin SOL:", balcBf);
-expect(balcBf).toStrictEqual(initSolBalc);
+const balcAdmin = svm.getBalance(admin);
+ll("admin SOL:", balcAdmin);
+expect(balcAdmin).toStrictEqual(initSolBalc);
 
 test("initial conditions", () => {
 	//acctIsNull(vaultAta1);
@@ -137,32 +135,31 @@ test("Deposit Legacy Tokens", () => {
 test("Flashloan", () => {
 	ll("\n----------== Flashloan");
 	signerKp = user1Kp;
-	signer = signerKp.publicKey;
 	mint = usdcMint;
 	decimals = 6;
 
 	debts = [100n];
 	fees = [500]; //u16, to be divided by 10_000
-	const { repayAmts, vaults, vaultBumps, tokenAtas, loanArrayOut } = loanArgs(
+	const { repayAmts, vaults, vaultBumps, tokenAtas, loansOut } = loanArgs(
 		debts,
 		fees,
 		mint,
-		signer,
+		signerKp.publicKey,
 	);
-
+	balcBf = ataBalc(tokenAtas[0]!, "vault");
 	flashloan(
 		signerKp,
 		vaults[0]!,
-		loanArrayOut.pda,
+		loansOut.pda,
 		mint,
 		tokenAtas,
 		decimals,
-		loanArrayOut.bump,
+		loansOut.bump,
 		vaultBumps[0]!,
 		fees[0]!,
 		debts,
 		repayAmts[0]!,
 	);
-	//ataBalCk(toAta, amt, "vaultO");
+	ataBalCk(tokenAtas[0]!, balcBf + repayAmts[0]! - BigInt(debts[0]!), "vault");
 	//ataBalCk(fromAta, as6zBn(424), "user1 ");
 });

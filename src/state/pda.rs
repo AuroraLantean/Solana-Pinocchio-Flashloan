@@ -53,7 +53,7 @@ impl Vault {
     unsafe { Ok(&mut *(pda.borrow_unchecked_mut().as_ptr() as *mut Self)) }
   }
 }
-//This is NOT a PDA, but a struct to be saved inside LoanArray PDA
+//This is NOT a PDA, but a struct to be saved inside Loans PDA
 #[derive(Clone, Debug)]
 #[repr(C, packed)]
 pub struct Loan {
@@ -66,7 +66,7 @@ impl Loan {
 }
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub struct LoanArray {} //array of Loan. because array length is unknow, we do not specify it here
-impl LoanArray {
+pub struct Loans {} //array of Loan. because array length is unknow, we do not specify it here
+impl Loans {
   pub const SEED: &[u8] = b"loan_array";
 }

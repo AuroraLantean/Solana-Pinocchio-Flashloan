@@ -1,7 +1,7 @@
 use crate::{
   amount_from_token_acct, check_ata, check_instruction_sysvar, check_pda, check_rent_sysvar,
-  check_sysprog, executable, instructions::check_signer, writable, Ee, FlashloanRepay, Loan,
-  LoanArray, Vault, PROG_ADDR,
+  check_sysprog, executable, instructions::check_signer, writable, Ee, FlashloanRepay, Loan, Loans,
+  Vault, PROG_ADDR,
 };
 use core::convert::TryFrom;
 use pinocchio::{
@@ -17,16 +17,16 @@ use pinocchio_log::log;
 pub struct FlashloanBorrow<'a> {
   pub signer: &'a AccountView,
   pub vault: &'a AccountView,
-  pub loan_array_pda: &'a AccountView,
+  pub loans_pda: &'a AccountView,
   pub mint: &'a AccountView,
   pub instruction_sysvar: &'a AccountView,
   //pub config_pda: &'a AccountView,
   //pub token_program: &'a AccountView,
   pub system_program: &'a AccountView,
   pub rent_sysvar: &'a AccountView,
-  pub ata_array: &'a [AccountView],
+  pub accounts: &'a [AccountView],
   pub decimals: u8,
-  pub loan_array_bump_a: [u8; 1],
+  pub loans_bump_a: [u8; 1],
   pub vault_bump_a: [u8; 1],
   pub fee: u16,
   pub amounts: &'a [u64],
@@ -39,16 +39,16 @@ impl<'a> FlashloanBorrow<'a> {
     let FlashloanBorrow {
       signer,
       vault,
-      loan_array_pda,
+      loans_pda,
       mint,
       instruction_sysvar,
       //config_pda: _,
       //token_program: _,
       system_program: _,
       rent_sysvar,
-      ata_array,
+      accounts,
       decimals,
-      loan_array_bump_a,
+      loans_bump_a,
       vault_bump_a,
       fee,
       amounts,
@@ -96,10 +96,10 @@ impl<'a> FlashloanBorrow<'a> {
     if unsafe {
       !address_eq(
         &repay_ix.get_instruction_account_at_unchecked(2).key,
-        loan_array_pda.address(),
+        loans_pda.address(),
       )
     } {
-      return Ee::RepayIxLoanArrayPda.e();
+      return Ee::RepayIxLoansPda.e();
     }
 
     for (i, amount) in amounts.iter().enumerate() {
@@ -110,7 +110,7 @@ impl<'a> FlashloanBorrow<'a> {
       if unsafe {
         !address_eq(
           &repay_ix.get_instruction_account_at_unchecked(i + 3).key,
-          ata_array[i * 2].address(),
+          accounts[i * 2].address(),
         )
       } {
         return Ee::RepayIxVaultAta.e();
@@ -118,7 +118,7 @@ impl<'a> FlashloanBorrow<'a> {
       if unsafe {
         !address_eq(
           &repay_ix.get_instruction_account_at_unchecked(i + 4).key,
-          ata_array[i * 2 + 1].address(),
+          accounts[i * 2 + 1].address(),
         )
       } {
         return Ee::RepayIxDebtorAta.e();
@@ -127,13 +127,13 @@ impl<'a> FlashloanBorrow<'a> {
     log!("Borrow 10: all accounts Ok");
 
     //-----------== send_tokens
-    //LoanArray is derived from the seed string and debtor.
+    //Loans is derived from the seed string and debtor.
     let seeds = [
-      Seed::from(LoanArray::SEED),
+      Seed::from(Loans::SEED),
       Seed::from(signer.address().as_ref()),
-      Seed::from(&loan_array_bump_a),
+      Seed::from(&loans_bump_a),
     ];
-    let loanarray_signer_seeds = &[Signer::from(&seeds)];
+    let loans_signer_seeds = &[Signer::from(&seeds)];
     log!("Borrow 7a");
 
     //Each vault is derived from the seed string and fee. Thus each PDA owns only the liquidity associated with that fee rate.
@@ -146,36 +146,36 @@ impl<'a> FlashloanBorrow<'a> {
     let vault_signer_seeds = &[Signer::from(&vault_seeds)];
     log!("Borrow 7b");
 
-    // Make a mutable LoanArray slice to push the Loan struct to it
-    let loan_array_size = size_of::<Loan>() * amounts.len(); //40 = 32 + 8
-    log!("Borrow 8. loan_array_size: {}", loan_array_size);
+    // Make a mutable slice to save the Loan structs
+    let loans_size = size_of::<Loan>() * amounts.len(); //40 = 32 + 8
+    log!("Borrow 8. loans_size: {}", loans_size);
 
     let rent = Rent::from_account_view(rent_sysvar)?;
-    let lamports = rent.try_minimum_balance(loan_array_size)?;
+    let lamports = rent.try_minimum_balance(loans_size)?;
     log!("Borrow 9");
 
     pinocchio_system::instructions::CreateAccount {
       from: signer,
-      to: loan_array_pda,
+      to: loans_pda,
       lamports,
-      space: loan_array_size as u64,
+      space: loans_size as u64,
       owner: &PROG_ADDR,
     }
-    .invoke_signed(loanarray_signer_seeds)?;
-    log!("Borrow 10: LoanArray initialized");
+    .invoke_signed(loans_signer_seeds)?;
+    log!("Borrow 10: Loans initialized");
 
-    //Make a mutable slice from the LoanArray's data. in a loop, add Loan to this slice and transfer tokens:
-    let mut loan_array_data = loan_array_pda.try_borrow_mut()?;
-    let loan_array = unsafe {
-      core::slice::from_raw_parts_mut(loan_array_data.as_mut_ptr() as *mut Loan, amounts.len())
+    //Make a mutable slice from the Loans data. in a loop, add Loan to this slice and transfer tokens:
+    let mut loans_data = loans_pda.try_borrow_mut()?;
+    let loans = unsafe {
+      core::slice::from_raw_parts_mut(loans_data.as_mut_ptr() as *mut Loan, amounts.len())
     };
     log!("Borrow 11");
 
-    //loop through all the loans. In each iteration, we get the vault_ata and debtor_ata, calculate the balance due to the protocol, save this data in the loanArray PDA, and transfer the tokens.
+    //loop through all the loans. In each iteration, we get the vault_ata and debtor_ata, calculate the balance due to the protocol, save this data in the loansPDA, and transfer the tokens.
     for (i, amount) in amounts.iter().enumerate() {
       log!("Borrow loop token sending: i = {}", i);
-      let vault_ata = &ata_array[i * 2];
-      let debtor_ata = &ata_array[i * 2 + 1];
+      let vault_ata = &accounts[i * 2];
+      let debtor_ata = &accounts[i * 2 + 1];
       check_ata(vault_ata, vault, mint)?;
       check_ata(debtor_ata, signer, mint)?;
 
@@ -199,8 +199,8 @@ impl<'a> FlashloanBorrow<'a> {
         .ok_or_else(|| Ee::AddToOverflow)?;
       log!("balc_plus_fee: {}", balc_plus_fee);
 
-      // Save the Loan to LoanArray
-      loan_array[i] = Loan {
+      // Save the Loan to Loans
+      loans[i] = Loan {
         vault_ata: vault_ata.address().to_bytes(),
         balc_plus_fee,
       };
@@ -230,7 +230,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
     //let instruction_data = LoanInstructionData::try_from(data)?;
 
-    let [signer, vault, loan_array_pda, mint, token_program, system_program, rent_sysvar, instruction_sysvar, ata_array @ ..] =
+    let [signer, vault, loans_pda, mint, token_program, system_program, rent_sysvar, instruction_sysvar, accounts @ ..] =
       accounts
     else {
       return Err(ProgramError::NotEnoughAccountKeys);
@@ -238,7 +238,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     check_signer(signer)?;
     writable(vault)?;
     check_pda(vault)?;
-    writable(loan_array_pda)?;
+    writable(loans_pda)?;
     executable(token_program)?;
     check_sysprog(system_program)?;
     check_rent_sysvar(rent_sysvar)?;
@@ -248,19 +248,19 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     check_instruction_sysvar(instruction_sysvar)?;
 
     // Each loan requires a vault_ata and a debtor_ata
-    if (ata_array.len() % 2).ne(&0) || ata_array.len().eq(&0) {
+    if (accounts.len() % 2).ne(&0) || accounts.len().eq(&0) {
       return Err(Ee::TokenAcctsLength.into());
     }
-    if loan_array_pda.try_borrow()?.len().ne(&0) {
-      return Err(Ee::LoanArrayHasData.into());
+    if loans_pda.try_borrow()?.len().ne(&0) {
+      return Err(Ee::LoansPdaHasData.into());
     }
 
     //-------== parse variadic data
     let (decimals, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
     log!("decimals: {}", *decimals);
 
-    let (loan_array_bump, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
-    log!("loan_array_bump: {}", *loan_array_bump);
+    let (loans_bump, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
+    log!("loans_bump: {}", *loans_bump);
 
     let (vault_bump, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
     log!("vault_bump: {}", *vault_bump);
@@ -279,22 +279,22 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       core::slice::from_raw_parts(data.as_ptr() as *const u64, data.len() / size_of::<u64>())
     };
     log!("amounts: {}", amounts);
-    if amounts.len() != ata_array.len() / 2 {
+    if amounts.len() != accounts.len() / 2 {
       return Err(Ee::AmountsLenVsTokenAcctLen.into());
     }
     Ok(Self {
       signer,
       vault,
-      loan_array_pda,
+      loans_pda,
       mint,
       instruction_sysvar,
       //config_pda,
       //token_program,
       system_program,
       rent_sysvar,
-      ata_array,
+      accounts,
       decimals: *decimals,
-      loan_array_bump_a: [*loan_array_bump],
+      loans_bump_a: [*loans_bump],
       vault_bump_a: [*vault_bump],
       fee,
       amounts,

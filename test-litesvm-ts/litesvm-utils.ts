@@ -188,7 +188,7 @@ export const loanArgs = (
 	if (debts.length !== feesX100.length)
 		throw new Error("debts length should be the same as feesX100");
 	const userAta = getAta(mint, signer);
-	const loanArrayOut = findLoanArrayV1(signer);
+	const loansOut = findLoanArrayV1(signer);
 
 	let repayAmt = 0n;
 	let vaultOut: PdaOut;
@@ -208,7 +208,7 @@ export const loanArgs = (
 		tokenAtas.push(getAta(mint, vaultOut.pda));
 		tokenAtas.push(userAta);
 	}
-	return { repayAmts, vaults, vaultBumps, tokenAtas, loanArrayOut };
+	return { repayAmts, vaults, vaultBumps, tokenAtas, loansOut };
 };
 export const flashloan = (
 	userSigner: Keypair,

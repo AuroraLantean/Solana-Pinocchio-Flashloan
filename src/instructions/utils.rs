@@ -177,8 +177,8 @@ pub enum Ee {
   //Flashloan
   #[error("TokenAcctsLength")]
   TokenAcctsLength,
-  #[error("LoanArrayHasData")]
-  LoanArrayHasData,
+  #[error("LoansPdaHasData")]
+  LoansPdaHasData,
   #[error("DataArgLenForU64")]
   DataArgLenForU64,
   #[error("AmountsLenVsTokenAcctLen")]
@@ -199,8 +199,8 @@ pub enum Ee {
   RepayIxSigner,
   #[error("RepayIxVaultPda")]
   RepayIxVaultPda,
-  #[error("RepayIxLoanArrayPda")]
-  RepayIxLoanArrayPda,
+  #[error("RepayIxLoansPda")]
+  RepayIxLoansPda,
   #[error("RepayIxVaultAta")]
   RepayIxVaultAta,
   #[error("RepayIxDebtorAta")]
@@ -307,7 +307,7 @@ impl TryFrom<u32> for Ee {
       69 => Ok(Ee::Xyz069),
 
       70 => Ok(Ee::TokenAcctsLength),
-      71 => Ok(Ee::LoanArrayHasData),
+      71 => Ok(Ee::LoansPdaHasData),
       72 => Ok(Ee::DataArgLenForU64),
       73 => Ok(Ee::AmountsLenVsTokenAcctLen),
       74 => Ok(Ee::BorrowAmountTooBig),
@@ -318,7 +318,7 @@ impl TryFrom<u32> for Ee {
       79 => Ok(Ee::RepayDiscriminator),
       80 => Ok(Ee::RepayIxSigner),
       81 => Ok(Ee::RepayIxVaultPda),
-      82 => Ok(Ee::RepayIxLoanArrayPda),
+      82 => Ok(Ee::RepayIxLoansPda),
       83 => Ok(Ee::RepayIxVaultAta),
       84 => Ok(Ee::RepayIxDebtorAta),
       85 => Ok(Ee::RepayAtaArrayLen),
@@ -412,7 +412,7 @@ impl ToStr for Ee {
 
       //Flashloan
       Ee::TokenAcctsLength => "TokenAcctsLength",
-      Ee::LoanArrayHasData => "LoanArrayHasData",
+      Ee::LoansPdaHasData => "LoansPdaHasData",
       Ee::DataArgLenForU64 => "DataArgLenForU64",
       Ee::AmountsLenVsTokenAcctLen => "AmountsLenVsTokenAcctLen",
       Ee::BorrowAmountTooBig => "BorrowAmountTooBig",
@@ -423,7 +423,7 @@ impl ToStr for Ee {
       Ee::RepayDiscriminator => "RepayDiscriminator",
       Ee::RepayIxSigner => "RepayIxSigner",
       Ee::RepayIxVaultPda => "RepayIxVaultPda",
-      Ee::RepayIxLoanArrayPda => "RepayIxLoanArrayPda",
+      Ee::RepayIxLoansPda => "RepayIxLoansPda",
       Ee::RepayIxVaultAta => "RepayIxVaultAta",
       Ee::RepayIxDebtorAta => "RepayIxDebtorAta",
       Ee::RepayAtaArrayLen => "RepayAtaArrayLen",
@@ -582,8 +582,6 @@ pub fn check_mint0a(mint: &AccountView, token_program: &AccountView) -> ProgramR
   }
   Ok(())
 }
-
-//pub const SYSTEMPROGRAM: pinocchio_pubkey::reexport::Pubkey = solana_system_interface::program::ID;
 
 pub fn close_pda(pda: &AccountView, dest: &AccountView) -> ProgramResult {
   log!("Close pda 1");
