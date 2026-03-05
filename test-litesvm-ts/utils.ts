@@ -54,8 +54,8 @@ export const fromLam = (amt: number) => BigInt(amt) / baseSOL;
 export const checkDecimals = (decimals: number, decimalName = "decimals") => {
 	if (decimals > 12 || decimals < 0) throw new Error(`${decimalName} invalid`);
 };
-export const checkBump = (value: number, decimalName = "u8 value") => {
-	if (value > 255 || value < 1) throw new Error(`${decimalName} invalid`);
+export const checkBump = (value: number) => {
+	if (value > 255 || value < 1) throw new Error(`bump ${value} is invalid`);
 };
 export const checkFee = (value: number, decimalName = "fee_u16 value") => {
 	if (value > 65535 || value < 1) throw new Error(`${decimalName} invalid`);
@@ -108,14 +108,20 @@ export type IxKeyArray = {
 	isSigner: boolean;
 	isWritable: boolean;
 };
+/// Maximum amountsLen is 8, minimum is 1
 export const checkTxnAccts = (txnAcctsLen: number, amountsLen: number) => {
 	if (txnAcctsLen < 3) throw new Error("txnAcctsLen < 3");
+	if (amountsLen > 8) throw new Error("amounts length should be <= 8");
 	if (txnAcctsLen % 3 !== 0)
 		throw new Error("txnAccts length should be a multiple of 3");
 	if (txnAcctsLen / 3 !== amountsLen)
 		throw new Error("amounts length should match txnAcctsLen/3");
 };
-export const makeIxKeyArray = (txnAccts: PublicKey[], amounts: bigint[]) => {
+export const makeIxKeyArray = (
+	txnAccts: PublicKey[],
+	amounts: bigint[],
+	decimals: number,
+) => {
 	const txnAcctsLen = txnAccts.length;
 	const amountsLen = amounts.length;
 	checkTxnAccts(txnAcctsLen, amountsLen);
@@ -144,7 +150,7 @@ export const makeIxKeyArray = (txnAccts: PublicKey[], amounts: bigint[]) => {
 		acctExists(userAta);
 		ll("userAta exists");
 
-		vaultTokBalc = ataBalc(vaultAta, "vaultAta", true);
+		vaultTokBalc = ataBalc(vaultAta, `vaultAta ${i}`, decimals, true);
 		if (vaultTokBalc === 0n) throw new Error("vaultTokBalc is zero");
 		if (amount > vaultTokBalc)
 			throw new Error("borrowed amount > vaultTokBalc");

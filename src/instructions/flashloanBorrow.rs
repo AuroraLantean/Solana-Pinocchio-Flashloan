@@ -26,8 +26,8 @@ pub struct FlashloanBorrow<'a> {
   pub txn_accts: &'a [AccountView],
   pub decimals: u8,
   pub loans_bump_a: [u8; 1],
-  pub vault_bump_a: [u8; 1],
-  pub fee: u16,
+  pub vault_bumps: &'a [u8],
+  pub fees: &'a [u16],
   pub amounts: &'a [u64],
 }
 impl<'a> FlashloanBorrow<'a> {
@@ -47,8 +47,8 @@ impl<'a> FlashloanBorrow<'a> {
       txn_accts,
       decimals,
       loans_bump_a,
-      vault_bump_a,
-      fee,
+      vault_bumps,
+      fees,
       amounts,
     } = self;
 
@@ -134,17 +134,7 @@ impl<'a> FlashloanBorrow<'a> {
       Seed::from(&loans_bump_a),
     ];
     let loans_signer_seeds = &[Signer::from(&seeds)];
-    log!("Borrow 7a");
-
-    //Each vault is derived from the seed string and fee. Thus each PDA owns only the liquidity associated with that fee rate.
-    let fee_bytes = fee.to_le_bytes();
-    let vault_seeds = [
-      Seed::from(Vault::SEED),
-      Seed::from(&fee_bytes),
-      Seed::from(&vault_bump_a),
-    ];
-    let vault_signer_seeds = &[Signer::from(&vault_seeds)];
-    log!("Borrow 7b");
+    log!("Borrow 7");
 
     // Make a mutable slice to save the Loan structs
     let loans_size = size_of::<Loan>() * amounts.len(); //40 = 32 + 8
@@ -169,14 +159,25 @@ impl<'a> FlashloanBorrow<'a> {
     let loans = unsafe {
       core::slice::from_raw_parts_mut(loans_data.as_mut_ptr() as *mut Loan, amounts.len())
     };
-    log!("Borrow 11");
+    log!("Borrow 11: loans_data ready");
 
-    //loop through all the loans. In each iteration, we get the vault_ata and debtor_ata, calculate the balance due to the protocol, save this data in the loansPDA, and transfer the tokens.
+    //loop through all the loans. In each iteration, we get a vault, vault_ata and debtor_ata, calculate the balance due to the protocol, save this data in the loansPDA, and transfer the tokens.
     for (i, amount) in amounts.iter().enumerate() {
       log!("Borrow loop token sending: i = {}", i);
       let vault = &txn_accts[i * 3];
       let vault_ata = &txn_accts[i * 3 + 1];
       let debtor_ata = &txn_accts[i * 3 + 2];
+      let fee = fees[i];
+
+      //Each vault is derived from the seed string and fee. Thus each PDA owns only the liquidity associated with that fee rate.
+      let fee_bytes = fee.to_le_bytes();
+      let vault_seeds = [
+        Seed::from(Vault::SEED),
+        Seed::from(&fee_bytes),
+        Seed::from(core::slice::from_ref(&vault_bumps[i])),
+      ];
+      let vault_signer_seeds = &[Signer::from(&vault_seeds)];
+      log!("Borrow 7");
 
       // Get the vault_ata_balc and add the fee to it so we can save it to the loan account
       let vault_ata_balc = amount_from_token_acct(vault_ata)?;
@@ -196,7 +197,7 @@ impl<'a> FlashloanBorrow<'a> {
             .ok_or_else(|| Ee::MultDivNone)?,
         )
         .ok_or_else(|| Ee::AddToOverflow)?;
-      log!("balc_plus_fee: {}", balc_plus_fee);
+      log!("balc_plus_fee : {}", balc_plus_fee);
 
       // Save the Loan to Loans
       loans[i] = Loan {
@@ -258,19 +259,33 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     let (loans_bump, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
     log!("loans_bump: {}", *loans_bump);
 
-    let (vault_bump, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
-    log!("vault_bump: {}", *vault_bump);
+    let (txn_len, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
+    log!("txn_len: {}", *txn_len);
+    if *txn_len > 8 || *txn_len == 0 {
+      return Err(Ee::TxnLenInvalid.into());
+    }
+    let txnlen = *txn_len as usize;
 
-    let (fee, data) = data
-      .split_at_checked(size_of::<u16>())
-      .ok_or_else(|| Ee::ByteSizeForU16)?;
-    let fee = u16::from_le_bytes(fee.try_into().map_err(|_| Ee::ByteSizeForU16)?);
-    log!("fee: {}", fee);
+    let (vault_bumps, data) = data
+      .split_at_checked(txnlen)
+      .ok_or_else(|| Ee::ByteSizeVaultBumps)?;
+    log!("vault_bumps: {}", vault_bumps);
+
+    let (fees_slice, data) = data
+      .split_at_checked(size_of::<u16>() * txnlen)
+      .ok_or_else(|| Ee::ByteSizeFees)?;
+
+    let fees: &[u16] = unsafe {
+      core::slice::from_raw_parts(
+        fees_slice.as_ptr() as *const u16,
+        fees_slice.len() / size_of::<u16>(),
+      )
+    };
+    log!("fees: {}", fees);
 
     if data.len() % size_of::<u64>() != 0 {
       return Err(Ee::DataArgLenForU64.into());
     }
-    // Get the amount slice
     let amounts: &[u64] = unsafe {
       core::slice::from_raw_parts(data.as_ptr() as *const u64, data.len() / size_of::<u64>())
     };
@@ -302,8 +317,8 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       txn_accts,
       decimals: *decimals,
       loans_bump_a: [*loans_bump],
-      vault_bump_a: [*vault_bump],
-      fee,
+      vault_bumps,
+      fees,
       amounts,
     })
   }

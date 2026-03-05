@@ -77,10 +77,10 @@ pub enum Ee {
   ByteSliceSize64,
   #[error("ByteSliceSize32")]
   ByteSliceSize32,
-  #[error("ByteSliceSize10")]
-  ByteSliceSize10,
-  #[error("ByteSliceSize6")]
-  ByteSliceSize6,
+  #[error("ByteSizeVaultBumps")]
+  ByteSizeVaultBumps,
+  #[error("ByteSizeFees")]
+  ByteSizeFees,
 
   //Inputs
   #[error("InputDataLen")]
@@ -211,6 +211,8 @@ pub enum Ee {
   RepayVaultAta,
   #[error("RepayVaultBalcNotExpected")]
   RepayVaultBalcNotExpected,
+  #[error("TxnLenInvalid")]
+  TxnLenInvalid,
   //Final variant
   #[error("NotMapped")]
   NotMapped,
@@ -259,8 +261,8 @@ impl TryFrom<u32> for Ee {
       25 => Ok(Ee::ByteSliceSize128),
       26 => Ok(Ee::ByteSliceSize64),
       27 => Ok(Ee::ByteSliceSize32),
-      28 => Ok(Ee::ByteSliceSize10),
-      29 => Ok(Ee::ByteSliceSize6),
+      28 => Ok(Ee::ByteSizeVaultBumps),
+      29 => Ok(Ee::ByteSizeFees),
 
       30 => Ok(Ee::InputDataLen),
       31 => Ok(Ee::InputDataBump),
@@ -324,6 +326,7 @@ impl TryFrom<u32> for Ee {
       85 => Ok(Ee::RepayTxnAcctsLen),
       86 => Ok(Ee::RepayVaultAta),
       87 => Ok(Ee::RepayVaultBalcNotExpected),
+      88 => Ok(Ee::TxnLenInvalid),
       _ => Err(Ee::NotMapped.into()),
     }
   }
@@ -362,8 +365,8 @@ impl ToStr for Ee {
       Ee::ByteSliceSize128 => "ByteSliceSize128",
       Ee::ByteSliceSize64 => "ByteSliceSize64",
       Ee::ByteSliceSize32 => "ByteSliceSize32",
-      Ee::ByteSliceSize10 => "ByteSliceSize10",
-      Ee::ByteSliceSize6 => "ByteSliceSize6",
+      Ee::ByteSizeVaultBumps => "ByteSizeVaultBumps",
+      Ee::ByteSizeFees => "ByteSizeFees",
 
       Ee::InputDataLen => "InputDataLen",
       Ee::InputDataBump => "InputDataBump",
@@ -429,6 +432,7 @@ impl ToStr for Ee {
       Ee::RepayTxnAcctsLen => "RepayTxnAcctsLen",
       Ee::RepayVaultAta => "RepayVaultAta",
       Ee::RepayVaultBalcNotExpected => "RepayVaultBalcNotExpected",
+      Ee::TxnLenInvalid => "TxnLenInvalid",
       //Final Variant
       Ee::NotMapped => "NotMapped",
     }

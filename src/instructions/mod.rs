@@ -76,13 +76,12 @@ pub enum ProgramIx {
   #[account(6, name = "instruction_sysvar", desc = "Instruction Sysvar")]
   #[account(7, writable, name = "vault", desc = "Vault PDA")]
   #[account(8, writable, name = "vault_ata", desc = "Vault ATA")]
-  #[account(9, writable, name = "borrower_ata", desc = "Borrower ATA")]
+  #[account(9, writable, name = "debtor_ata", desc = "Debtor ATA")]
   FlashloanBorrow {
     decimals: u8,
-    loan_array_bump: u8,
-    vault_bump: u8,
-    fee: u16,
-    //amounts: [u8; _]
+    loans_bump: u8,
+    vault_bumps: [u8; 8],
+    fee: [u16; 8],
   },
 
   /// 4 FlashloanRepay
@@ -91,8 +90,8 @@ pub enum ProgramIx {
   #[account(1, writable, name = "loans_pda", desc = "Loans PDA")]
   #[account(2, writable, name = "vault", desc = "Vault PDA")]
   #[account(3, writable, name = "vault_ata", desc = "Vault ATA")]
-  #[account(4, writable, name = "borrower_ata", desc = "Borrower ATA")]
-  FlashloanRepay { decimals: u8, bump: u8, fee: u16 },
+  #[account(4, writable, name = "debtor_ata", desc = "Debtor ATA")]
+  FlashloanRepay {},
   //---------------== Admin PDA
   //---------------== User PDA
   //---------------== Action PDA

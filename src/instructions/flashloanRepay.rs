@@ -44,7 +44,7 @@ impl<'a> FlashloanRepay<'a> {
 
       // Check if the loan is already repaid
       let vault_balc = amount_from_token_acct(&vault_ata)?;
-      log!("Repay vault_balc: {}", vault_balc);
+      log!("Repay vault_balc         : {}", vault_balc);
 
       let vault_balc_expected = unsafe {
         *(loans_data

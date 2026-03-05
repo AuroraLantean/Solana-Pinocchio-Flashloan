@@ -52,7 +52,7 @@ let decimals: number;
 let fee: number;
 let fees: number[];
 let amt: bigint;
-let debts: bigint[];
+let amounts: bigint[];
 let balcs: bigint[];
 
 let _balcBf: bigint;
@@ -140,11 +140,11 @@ test("Flashloan", () => {
 	mint = usdcMint;
 	decimals = 6;
 
-	debts = [100n];
+	amounts = [100n];
 	fees = [500]; //u16, to be divided by 10_000
-	const { repayAmts, vaultBumps, txnAccts, loansPdaOut, debtsLen } =
-		flashloanArgs(debts, fees, mint, signerKp.publicKey);
-	balcs = ataArrayBalc(txnAccts, debtsLen, decimals);
+	const { repayAmts, vaultBumps, txnAccts, loansPdaOut, amountsLen } =
+		flashloanArgs(amounts, fees, mint, signerKp.publicKey);
+	balcs = ataArrayBalc(txnAccts, amountsLen, decimals);
 
 	flashloan(
 		signerKp,
@@ -153,10 +153,10 @@ test("Flashloan", () => {
 		txnAccts,
 		decimals,
 		loansPdaOut.bump,
-		vaultBumps[0]!,
-		fees[0]!,
-		debts,
+		vaultBumps,
+		fees,
+		amounts,
 		repayAmts[0]!,
 	);
-	ataArrayBalCk(txnAccts, balcs, repayAmts, debts, decimals);
+	ataArrayBalCk(txnAccts, balcs, repayAmts, amounts, decimals);
 });

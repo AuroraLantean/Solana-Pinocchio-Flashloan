@@ -95,7 +95,7 @@ export const vaultInit = (
 	vaultBump: number,
 ) => {
 	const disc = 0;
-	checkBump(vaultBump, "bump");
+	checkBump(vaultBump);
 	const argData = [vaultBump, ...numToBytes(fee, 16)];
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
@@ -181,15 +181,15 @@ export const tokLgcDeposit = (
 };
 
 export const flashloanArgs = (
-	debts: bigint[],
+	amounts: bigint[],
 	feesX100: number[],
 	mint: PublicKey,
 	signer: PublicKey,
 ) => {
 	ll("------==flashloanArgs");
-	const debtsLen = debts.length;
-	if (debtsLen !== feesX100.length)
-		throw new Error("debts length should be the same as feesX100");
+	const amountsLen = amounts.length;
+	if (amountsLen !== feesX100.length)
+		throw new Error("amounts length should be the same as feesX100");
 	const userAta = getAta(mint, signer);
 	const loansPdaOut = findLoansPdaV1(signer);
 
@@ -198,7 +198,7 @@ export const flashloanArgs = (
 	const repayAmts: bigint[] = [];
 	const txnAccts: PublicKey[] = [];
 	const vaultBumps: number[] = [];
-	for (const [idx, debt] of debts.entries()) {
+	for (const [idx, debt] of amounts.entries()) {
 		const fee = feesX100[idx];
 		if (fee === undefined) throw new Error(`feesX100[${idx}] undefined`);
 		repayAmt = (debt * BigInt(fee)) / 10_000n + debt;
@@ -211,7 +211,7 @@ export const flashloanArgs = (
 		txnAccts.push(userAta);
 	}
 	ll("flashloanArgs successful");
-	return { repayAmts, vaultBumps, txnAccts, loansPdaOut, debtsLen };
+	return { repayAmts, vaultBumps, txnAccts, loansPdaOut, amountsLen };
 };
 export const flashloan = (
 	userSigner: Keypair,
@@ -222,9 +222,9 @@ export const flashloan = (
 	txnAccts: PublicKey[], //[vaultAta, userAta, ...]
 	decimals: number,
 	loansBump: number,
-	vaultBump: number,
-	fee: number,
-	debts: bigint[],
+	vaultBumps: number[],
+	fees: number[],
+	amounts: bigint[],
 	repayAmount: bigint,
 	tokenProg = TOKEN_PROGRAM_ID,
 	atokenProg = ATokenGPvbd,
@@ -234,15 +234,22 @@ export const flashloan = (
 	const repay_disc = 4;
 	acctIsNull(loansPda);
 	checkDecimals(decimals);
-	checkBump(vaultBump, "vaultBump");
-	checkFee(fee, "fee");
+	for (const vaultBump of vaultBumps) {
+		checkBump(vaultBump);
+	}
+	const feesU8: number[] = [];
+	for (const fee of fees) {
+		checkFee(fee, "fee");
+		feesU8.push(...numToBytes(fee, 16));
+	}
 
-	const { u64bytes, ixKeyArray } = makeIxKeyArray(txnAccts, debts);
+	const { u64bytes, ixKeyArray } = makeIxKeyArray(txnAccts, amounts, decimals);
 	const argData = [
 		decimals,
 		loansBump,
-		vaultBump,
-		...numToBytes(fee, 16),
+		amounts.length,
+		...vaultBumps,
+		...feesU8,
 		...u64bytes,
 	];
 	const blockhash = svm.latestBlockhash();
@@ -296,7 +303,7 @@ export const flashloan = (
 			...ixKeyArray,
 		],
 		programId: flashloanProgAddr,
-		data: Buffer.from([repay_disc, ...argData]),
+		data: Buffer.from([repay_disc]),
 	});
 	sendTxns(
 		svm,
@@ -520,14 +527,14 @@ export const ataArrayBalCk = (
 	txnAccts: PublicKey[],
 	prevBalcs: bigint[],
 	repayAmts: bigint[],
-	debts: bigint[],
+	amounts: bigint[],
 	decimals: number,
 ) => {
-	const debtsLen = debts.length;
-	if (debtsLen !== prevBalcs.length || debtsLen !== repayAmts.length)
+	const amountsLen = amounts.length;
+	if (amountsLen !== prevBalcs.length || amountsLen !== repayAmts.length)
 		throw new Error("one/more array length invalid");
 
-	const balcs = ataArrayBalc(txnAccts, debtsLen, decimals);
+	const balcs = ataArrayBalc(txnAccts, amountsLen, decimals);
 	let prevBalc: bigint | undefined;
 	let repayAmt: bigint | undefined;
 	let debt: bigint | undefined;
@@ -542,10 +549,10 @@ export const ataArrayBalCk = (
 			ll("index i = ", i);
 			throw new Error("repayAmt[i] undefined");
 		}
-		debt = debts[i];
+		debt = amounts[i];
 		if (debt === undefined) {
 			ll("index i = ", i);
-			throw new Error("debts[i] undefined");
+			throw new Error("amounts[i] undefined");
 		}
 		expect(balc).toStrictEqual(prevBalc + repayAmt - debt);
 	}
