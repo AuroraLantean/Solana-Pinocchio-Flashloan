@@ -1,6 +1,4 @@
-use crate::{
-  amount_from_token_acct, check_pda, close_pda, instructions::check_signer, writable, Ee, Loan,
-};
+use crate::{amount_from_token_acct, close_pda, instructions::check_signer, writable, Ee, Loan};
 use core::convert::TryFrom;
 use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 use pinocchio_log::log;

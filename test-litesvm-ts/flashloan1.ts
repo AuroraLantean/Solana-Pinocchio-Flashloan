@@ -5,8 +5,9 @@ import type { Keypair, PublicKey } from "@solana/web3.js";
 import {
 	acctExists,
 	acctIsNull,
+	ataArrayBalCk,
+	ataArrayBalc,
 	ataBalCk,
-	atasBalc,
 	findVaultV1,
 	flashloan,
 	flashloanArgs,
@@ -141,17 +142,12 @@ test("Flashloan", () => {
 
 	debts = [100n];
 	fees = [500]; //u16, to be divided by 10_000
-	const { repayAmts, vaultBumps, txnAccts, loansPdaOut } = flashloanArgs(
-		debts,
-		fees,
-		mint,
-		signerKp.publicKey,
-	);
-	balcs = atasBalc(txnAccts, debts.length);
-	const balcBf = balcs[0];
+	const { repayAmts, vaultBumps, txnAccts, loansPdaOut, debtsLen } =
+		flashloanArgs(debts, fees, mint, signerKp.publicKey);
+	balcs = ataArrayBalc(txnAccts, debtsLen, decimals);
+
 	flashloan(
 		signerKp,
-		//vaults[0]!,
 		loansPdaOut.pda,
 		mint,
 		txnAccts,
@@ -162,6 +158,5 @@ test("Flashloan", () => {
 		debts,
 		repayAmts[0]!,
 	);
-	ataBalCk(txnAccts[1]!, balcBf + repayAmts[0]! - BigInt(debts[0]!), "vault");
-	//ataBalCk(fromAta, as6zBn(424), "user1 ");
+	ataArrayBalCk(txnAccts, balcs, repayAmts, debts, decimals);
 });

@@ -113,7 +113,7 @@ export const checkTxnAccts = (txnAcctsLen: number, amountsLen: number) => {
 	if (txnAcctsLen % 3 !== 0)
 		throw new Error("txnAccts length should be a multiple of 3");
 	if (txnAcctsLen / 3 !== amountsLen)
-		throw new Error("amounts length should match tokAcctLen/3");
+		throw new Error("amounts length should match txnAcctsLen/3");
 };
 export const makeIxKeyArray = (txnAccts: PublicKey[], amounts: bigint[]) => {
 	const txnAcctsLen = txnAccts.length;

@@ -30,6 +30,7 @@ import {
 	checkBump,
 	checkDecimals,
 	checkFee,
+	checkTxnAccts,
 	makeIxKeyArray,
 	numToBytes,
 	zero,
@@ -186,7 +187,8 @@ export const flashloanArgs = (
 	signer: PublicKey,
 ) => {
 	ll("------==flashloanArgs");
-	if (debts.length !== feesX100.length)
+	const debtsLen = debts.length;
+	if (debtsLen !== feesX100.length)
 		throw new Error("debts length should be the same as feesX100");
 	const userAta = getAta(mint, signer);
 	const loansPdaOut = findLoansPdaV1(signer);
@@ -209,7 +211,7 @@ export const flashloanArgs = (
 		txnAccts.push(userAta);
 	}
 	ll("flashloanArgs successful");
-	return { repayAmts, vaultBumps, txnAccts, loansPdaOut };
+	return { repayAmts, vaultBumps, txnAccts, loansPdaOut, debtsLen };
 };
 export const flashloan = (
 	userSigner: Keypair,
@@ -495,9 +497,63 @@ export const tokBalc = (
 	return decoded.amount;
 };
 
+export const ataArrayBalc = (
+	txnAccts: PublicKey[],
+	amountsLen: number,
+	decimals: number,
+	isVerbose = false,
+) => {
+	checkTxnAccts(txnAccts.length, amountsLen);
+	let vaultAta: PublicKey | undefined;
+	let balc: bigint;
+	const balcArray: bigint[] = [];
+	for (let i = 0; i < amountsLen; i++) {
+		vaultAta = txnAccts[i * 3 + 1];
+		if (vaultAta === undefined) throw new Error("vaultAta is undefined");
+		if (isVerbose) ll(`index ${i}: ${vaultAta.toBase58()}`);
+		balc = ataBalc(vaultAta, `vault ${i}`, decimals, true);
+		balcArray.push(balc);
+	}
+	return balcArray;
+};
+export const ataArrayBalCk = (
+	txnAccts: PublicKey[],
+	prevBalcs: bigint[],
+	repayAmts: bigint[],
+	debts: bigint[],
+	decimals: number,
+) => {
+	const debtsLen = debts.length;
+	if (debtsLen !== prevBalcs.length || debtsLen !== repayAmts.length)
+		throw new Error("one/more array length invalid");
+
+	const balcs = ataArrayBalc(txnAccts, debtsLen, decimals);
+	let prevBalc: bigint | undefined;
+	let repayAmt: bigint | undefined;
+	let debt: bigint | undefined;
+	for (const [i, balc] of balcs.entries()) {
+		prevBalc = prevBalcs[i];
+		if (prevBalc === undefined) {
+			ll("index i = ", i);
+			throw new Error("prevBalcs[i] undefined");
+		}
+		repayAmt = repayAmts[i];
+		if (repayAmt === undefined) {
+			ll("index i = ", i);
+			throw new Error("repayAmt[i] undefined");
+		}
+		debt = debts[i];
+		if (debt === undefined) {
+			ll("index i = ", i);
+			throw new Error("debts[i] undefined");
+		}
+		expect(balc).toStrictEqual(prevBalc + repayAmt - debt);
+	}
+};
 export const ataBalc = (
 	ata: PublicKey,
 	name = "token balc",
+	decimals: number,
 	isVerbose = true,
 ) => {
 	const raw = svm.getAccount(ata);
@@ -507,7 +563,13 @@ export const ataBalc = (
 	}
 	const rawAcctData = raw?.data;
 	const decoded = AccountLayout.decode(rawAcctData);
-	if (isVerbose) ll(name, ":", decoded.amount);
+	if (isVerbose)
+		ll(
+			name,
+			"tok balc:",
+			decoded.amount,
+			decoded.amount / BigInt(10 ** decimals),
+		);
 	return decoded.amount;
 };
 export const ataBalCk = (
@@ -515,8 +577,9 @@ export const ataBalCk = (
 	expectedAmount: bigint,
 	name: string,
 	decimals = 6,
+	isVerbose = true,
 ) => {
-	const amount = ataBalc(ata, name, false);
+	const amount = ataBalc(ata, name, decimals, isVerbose);
 	ll(name, "token:", amount, amount / BigInt(10 ** decimals));
 	expect(amount).toStrictEqual(expectedAmount);
 };
