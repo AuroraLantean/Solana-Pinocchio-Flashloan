@@ -103,6 +103,13 @@ export type SolanaAccount = {
 	pubkey: string;
 };
 //--------------==
+export const bigIntSum = (bigintArray: bigint[]) => {
+	let sum = 0n;
+	for (const item of bigintArray) {
+		sum = sum + item;
+	}
+	return sum;
+};
 export type IxKeyArray = {
 	pubkey: PublicKey;
 	isSigner: boolean;

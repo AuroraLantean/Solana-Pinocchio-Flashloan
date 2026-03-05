@@ -142,8 +142,14 @@ test("Flashloan", () => {
 
 	amounts = [100n];
 	fees = [500]; //u16, to be divided by 10_000
-	const { repayAmts, vaultBumps, txnAccts, loansPdaOut, amountsLen } =
-		flashloanArgs(amounts, fees, mint, signerKp.publicKey);
+	const {
+		repayAmts,
+		vaultBumps,
+		txnAccts,
+		loansPdaOut,
+		amountsLen,
+		rapayAmtsSum,
+	} = flashloanArgs(amounts, fees, mint, signerKp.publicKey);
 	balcs = ataArrayBalc(txnAccts, amountsLen, decimals);
 
 	flashloan(
@@ -156,7 +162,7 @@ test("Flashloan", () => {
 		vaultBumps,
 		fees,
 		amounts,
-		repayAmts[0]!,
+		rapayAmtsSum,
 	);
 	ataArrayBalCk(txnAccts, balcs, repayAmts, amounts, decimals);
 });

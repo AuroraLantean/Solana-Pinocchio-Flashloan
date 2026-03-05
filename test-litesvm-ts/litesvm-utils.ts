@@ -26,6 +26,7 @@ import {
 } from "litesvm";
 
 import {
+	bigIntSum,
 	checkBigint,
 	checkBump,
 	checkDecimals,
@@ -210,8 +211,16 @@ export const flashloanArgs = (
 		txnAccts.push(getAta(mint, vaultOut.pda));
 		txnAccts.push(userAta);
 	}
+	const rapayAmtsSum = bigIntSum(repayAmts);
 	ll("flashloanArgs successful");
-	return { repayAmts, vaultBumps, txnAccts, loansPdaOut, amountsLen };
+	return {
+		repayAmts,
+		vaultBumps,
+		txnAccts,
+		loansPdaOut,
+		amountsLen,
+		rapayAmtsSum,
+	};
 };
 export const flashloan = (
 	userSigner: Keypair,
