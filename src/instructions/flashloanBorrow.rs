@@ -245,6 +245,11 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     check_instruction_sysvar(instruction_sysvar)?;
 
     // Each loan requires a vault, vault_ata, and a debtor_ata
+    let txn_len = txn_accts.len() / 3;
+    log!("txn_len: {}", txn_len);
+    if txn_len > 8 || txn_len == 0 {
+      return Err(Ee::TxnLenInvalid.into());
+    }
     if (txn_accts.len() % 3).ne(&0) || txn_accts.len().eq(&0) {
       return Err(Ee::TxnAcctsLength.into());
     }
@@ -259,20 +264,13 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     let (loans_bump, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
     log!("loans_bump: {}", *loans_bump);
 
-    let (txn_len, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
-    log!("txn_len: {}", *txn_len);
-    if *txn_len > 8 || *txn_len == 0 {
-      return Err(Ee::TxnLenInvalid.into());
-    }
-    let txnlen = *txn_len as usize;
-
     let (vault_bumps, data) = data
-      .split_at_checked(txnlen)
+      .split_at_checked(txn_len)
       .ok_or_else(|| Ee::ByteSizeVaultBumps)?;
     log!("vault_bumps: {}", vault_bumps);
 
     let (fees_slice, data) = data
-      .split_at_checked(size_of::<u16>() * txnlen)
+      .split_at_checked(size_of::<u16>() * txn_len)
       .ok_or_else(|| Ee::ByteSizeFees)?;
 
     let fees: &[u16] = unsafe {

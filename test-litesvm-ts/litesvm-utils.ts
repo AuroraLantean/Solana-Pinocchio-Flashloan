@@ -253,14 +253,7 @@ export const flashloan = (
 	}
 
 	const { u64bytes, ixKeyArray } = makeIxKeyArray(txnAccts, amounts, decimals);
-	const argData = [
-		decimals,
-		loansBump,
-		amounts.length,
-		...vaultBumps,
-		...feesU8,
-		...u64bytes,
-	];
+	const argData = [decimals, loansBump, ...vaultBumps, ...feesU8, ...u64bytes];
 	const blockhash = svm.latestBlockhash();
 
 	const discDeposit = 2;
