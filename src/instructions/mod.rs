@@ -44,7 +44,7 @@ pub enum ProgramIx {
   /// 1 Vault Ata Init
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   #[account(1, writable, name = "vault_pda", desc = "Vault PDA")]
-  #[account(2, writable, name = "vault_tokacct", desc = "Vault Token Acct")]
+  #[account(2, writable, name = "vault_ata", desc = "Vault ATA")]
   #[account(3, name = "mint", desc = "Mint")]
   //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
   #[account(4, name = "token_program", desc = "Token Program")]
@@ -55,15 +55,16 @@ pub enum ProgramIx {
 
   /// 2 Token Legacy Deposit to Vault
   #[account(0, signer, writable, name = "signer", desc = "signer")]
-  #[account(1, writable, name = "vault_pda", desc = "Vault PDA")]
-  #[account(2, writable, name = "vault_tokacct", desc = "Vault Token Acct")]
-  #[account(3, name = "mint", desc = "Mint")]
+  #[account(1, writable, name = "signer_ata", desc = "Signer ATA")]
+  #[account(2, name = "mint", desc = "Mint")]
   //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
-  #[account(4, name = "token_program", desc = "Token Program")]
-  #[account(5, name = "system_program", desc = "System Program")]
-  #[account(6, name = "atoken_program", desc = "Associated Token Program")]
-  #[account(7, name = "rent_sysvar", desc = "Rent Sysvar")]
-  TokLgcDeposit { decimal: u8 },
+  #[account(3, name = "token_program", desc = "Token Program")]
+  #[account(4, name = "system_program", desc = "System Program")]
+  #[account(5, name = "atoken_program", desc = "Associated Token Program")]
+  #[account(6, name = "rent_sysvar", desc = "Rent Sysvar")]
+  #[account(7, writable, name = "vault_pda", desc = "Vault PDA")]
+  #[account(8, writable, name = "vault_ata", desc = "Vault ATA")]
+  TokLgcDeposit { decimal: u8, amount: u64 },
 
   //---------------== Flashloan
   /// 3 FlashloanBorrow
@@ -81,7 +82,7 @@ pub enum ProgramIx {
     decimals: u8,
     loans_bump: u8,
     vault_bumps: [u8; 8],
-    fee: [u16; 8],
+    fees: [u16; 8],
   },
 
   /// 4 FlashloanRepay

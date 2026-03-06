@@ -480,6 +480,7 @@ pub fn amount_from_token_acct(account: &AccountView) -> Result<u64, ProgramError
   Ok(balance)
 }
 
+// check ata minimum balance
 pub fn ata_balc(from_ata: &AccountView, amount: u64) -> ProgramResult {
   let from_ata_info = TokenAccount::from_account_view(from_ata)?;
   if from_ata_info.amount() < amount {

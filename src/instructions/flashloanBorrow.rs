@@ -1,7 +1,7 @@
 use crate::{
-  amount_from_token_acct, check_ata, check_instruction_sysvar, check_pda, check_rent_sysvar,
-  check_sysprog, executable, instructions::check_signer, writable, Ee, FlashloanRepay, Loan, Loans,
-  Vault, PROG_ADDR,
+  amount_from_token_acct, ata_balc, check_ata, check_instruction_sysvar, check_pda,
+  check_rent_sysvar, check_sysprog, executable, instructions::check_signer, none_zero_u64,
+  writable, Ee, FlashloanRepay, Loan, Loans, Vault, PROG_ADDR,
 };
 use core::convert::TryFrom;
 use pinocchio::{
@@ -168,6 +168,8 @@ impl<'a> FlashloanBorrow<'a> {
       let vault_ata = &txn_accts[i * 3 + 1];
       let debtor_ata = &txn_accts[i * 3 + 2];
       let fee = fees[i];
+      none_zero_u64(*amount)?;
+      ata_balc(vault_ata, *amount)?;
 
       //Each vault is derived from the seed string and fee. Thus each PDA owns only the liquidity associated with that fee rate.
       let fee_bytes = fee.to_le_bytes();
@@ -250,9 +252,23 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     if txn_len > 8 || txn_len == 0 {
       return Err(Ee::TxnLenInvalid.into());
     }
-    if (txn_accts.len() % 3).ne(&0) || txn_accts.len().eq(&0) {
+    if (txn_accts.len() % 3).ne(&0) {
       return Err(Ee::TxnAcctsLength.into());
     }
+    for i in 0..txn_len {
+      log!("tryFrom loop : i = {}", i);
+      let vault = &txn_accts[i * 3];
+      let vault_ata = &txn_accts[i * 3 + 1];
+      let debtor_ata = &txn_accts[i * 3 + 2];
+
+      writable(vault)?;
+      writable(vault_ata)?;
+      writable(debtor_ata)?;
+      check_pda(vault)?;
+      check_ata(vault_ata, vault, mint)?;
+      check_ata(debtor_ata, signer, mint)?;
+    }
+
     if loans_pda.try_borrow()?.len().ne(&0) {
       return Err(Ee::LoansPdaHasData.into());
     }
@@ -288,21 +304,10 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
       core::slice::from_raw_parts(data.as_ptr() as *const u64, data.len() / size_of::<u64>())
     };
     log!("amounts: {}", amounts);
-    if amounts.len() != txn_accts.len() / 3 {
+    if amounts.len() != txn_len {
       return Err(Ee::AmountsLenVsTxnAcctsLen.into());
     }
 
-    for (i, _) in amounts.iter().enumerate() {
-      log!("tryFrom loop : i = {}", i);
-      let vault = &txn_accts[i * 3];
-      let vault_ata = &txn_accts[i * 3 + 1];
-      let debtor_ata = &txn_accts[i * 3 + 2];
-
-      writable(vault)?;
-      check_pda(vault)?;
-      check_ata(vault_ata, vault, mint)?;
-      check_ata(debtor_ata, signer, mint)?;
-    }
     Ok(Self {
       signer,
       loans_pda,
