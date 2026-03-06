@@ -8,19 +8,19 @@ use pinocchio::{
 use pinocchio_log::log;
 
 use crate::{
-  check_data_len, check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u8,
-  parse_u16, writable, Ee, Vault, PROG_ADDR,
+  check_data_len, check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u16,
+  none_zero_u8, writable, Ee, Vault, PROG_ADDR,
 };
 
 /// Vault Init
 pub struct VaultInit<'a> {
   pub signer: &'a AccountView,
-  pub vault: &'a AccountView,
+  pub vaults: &'a [AccountView],
   //pub config_pda: &'a AccountView,
   pub system_program: &'a AccountView,
   pub rent_sysvar: &'a AccountView,
-  pub fee: u16,
-  pub vault_bump: u8,
+  pub fees: &'a [u16],
+  pub vault_bumps: &'a [u8],
 }
 impl<'a> VaultInit<'a> {
   pub const DISCRIMINATOR: &'a u8 = &0;
@@ -28,18 +28,22 @@ impl<'a> VaultInit<'a> {
   pub fn process(self) -> ProgramResult {
     let VaultInit {
       signer,
-      vault,
+      vaults,
       //config_pda,
       system_program: _,
       rent_sysvar,
-      fee,
-      vault_bump,
+      fees,
+      vault_bumps,
     } = self;
     log!("---------== process()");
     //config_pda.check_borrow_mut()?;
     //let _config: &mut Config = Config::from_account_view(&config_pda)?;
 
-    if vault.is_data_empty() {
+    for (i, vault) in vaults.iter().enumerate() {
+      log!("tryFrom loop : i = {}", i);
+      let fee = &fees[i];
+      let vault_bump = &vault_bumps[i];
+
       log!("Make Vault PDA 1");
       let rent = Rent::from_account_view(rent_sysvar)?;
       let lamports = rent.try_minimum_balance(Vault::LEN)?;
@@ -50,7 +54,7 @@ impl<'a> VaultInit<'a> {
         Seed::from(Vault::SEED),
         //signer.address().as_ref(),
         Seed::from(&fee_bytes),
-        Seed::from(core::slice::from_ref(&vault_bump)),
+        Seed::from(core::slice::from_ref(vault_bump)),
       ];
       let signer_seeds = &[Signer::from(&seeds)];
 
@@ -62,14 +66,12 @@ impl<'a> VaultInit<'a> {
         owner: &PROG_ADDR,
       }
       .invoke_signed(signer_seeds)?;
-    } else {
-      return Ee::VaultExists.e();
-    }
-    log!("Vault is made");
+      log!("Vault is made");
 
-    vault.check_borrow_mut()?;
-    let vault: &mut Vault = Vault::from_account_view(&vault)?;
-    vault.set_bump(vault_bump)?;
+      vault.check_borrow_mut()?;
+      let vault: &mut Vault = Vault::from_account_view(&vault)?;
+      vault.set_bump(*vault_bump)?;
+    }
     Ok(())
   }
 }
@@ -83,34 +85,63 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
     let data_len = 3;
     check_data_len(data, data_len)?;
 
-    let [signer, vault, system_program, rent_sysvar] = accounts else {
+    let [signer, system_program, rent_sysvar, vaults @ ..] = accounts else {
       return Err(ProgramError::NotEnoughAccountKeys);
     };
     check_signer(signer)?;
     check_sysprog(system_program)?;
     check_rent_sysvar(rent_sysvar)?;
     log!("VaultInit try_from 3");
-
-    writable(vault)?;
     //writable(config_pda)?;
+
+    // Each txn_acct requires a vault, vault_ata
+    let txn_len = vaults.len();
+    log!("txn_len: {}", txn_len);
+    if txn_len > 8 || txn_len == 0 {
+      return Err(Ee::TxnLenInvalid.into());
+    }
     log!("VaultInit try_from 4");
 
-    let vault_bump = data[0];
-    log!("vault_bump: {}", vault_bump);
-    none_zero_u8(vault_bump)?;
+    //-------== parse variadic data
+    let (vault_bumps, data) = data
+      .split_at_checked(txn_len)
+      .ok_or_else(|| Ee::ByteSizeVaultBumps)?;
+    log!("vault_bumps: {}", vault_bumps);
 
-    let fee = parse_u16(&data[1..3])?;
-    log!("fee: {}", fee);
+    let (fees_slice, data) = data
+      .split_at_checked(size_of::<u16>() * txn_len)
+      .ok_or_else(|| Ee::ByteSizeFees)?;
+
+    let fees: &[u16] = unsafe {
+      core::slice::from_raw_parts(
+        fees_slice.as_ptr() as *const u16,
+        fees_slice.len() / size_of::<u16>(),
+      )
+    };
+    log!("fees: {}", fees);
+    if data.len() > 0 {
+      return Err(Ee::InputDataLen.into());
+    }
+
+    for (i, vault) in vaults.iter().enumerate() {
+      log!("tryFrom loop : i = {}", i);
+      writable(vault)?;
+      if !vault.is_data_empty() {
+        return Err(Ee::VaultExists.into());
+      }
+      none_zero_u8(vault_bumps[i])?;
+      none_zero_u16(fees[i])?;
+    }
     log!("VaultInit try_from 5");
 
     Ok(Self {
       signer,
-      vault,
+      vaults,
       //config_pda,
       system_program,
       rent_sysvar,
-      fee,
-      vault_bump,
+      fees,
+      vault_bumps,
     })
   }
 }

@@ -45,7 +45,6 @@ impl<'a> TokLgcDeposit<'a> {
       log!("tryFrom loop : i = {}", i);
       let vault = &txn_accts[i * 2];
       let vault_ata = &txn_accts[i * 2 + 1];
-      none_zero_u64(*amount)?;
 
       if vault_ata.is_data_empty() {
         log!("Make vault_ata");
@@ -111,14 +110,6 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for TokLgcDeposit<'a> {
     if (txn_accts.len() % 2).ne(&0) {
       return Err(Ee::TxnAcctsLength.into());
     }
-    for i in 0..txn_len {
-      log!("tryFrom loop : i = {}", i);
-      let vault = &txn_accts[i * 2];
-      let vault_ata = &txn_accts[i * 2 + 1];
-      writable(vault)?;
-      writable(vault_ata)?;
-      check_pda(vault)?;
-    }
     log!("TokLgcDeposit try_from 5");
 
     //-------== parse variadic data
@@ -141,12 +132,20 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for TokLgcDeposit<'a> {
     }
     let sum: u64 = amounts.iter().sum();
     ata_balc(from_ata, sum)?;
-
     log!("TokLgcDeposit try_from 7");
+
+    for i in 0..txn_len {
+      log!("tryFrom loop : i = {}", i);
+      let vault = &txn_accts[i * 2];
+      let vault_ata = &txn_accts[i * 2 + 1];
+      writable(vault)?;
+      writable(vault_ata)?;
+      check_pda(vault)?;
+      none_zero_u64(amounts[i])?;
+    }
     //config_pda.check_borrow_mut()?;
     //let config: &mut Config = Config::from_account_view(&config_pda)?;
     //check_vault(vault, config.vault())?;
-
     Ok(Self {
       user,
       from_ata,

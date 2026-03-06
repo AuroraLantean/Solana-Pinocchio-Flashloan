@@ -1,7 +1,7 @@
 use crate::{
   amount_from_token_acct, ata_balc, check_ata, check_instruction_sysvar, check_pda,
-  check_rent_sysvar, check_sysprog, executable, instructions::check_signer, none_zero_u64,
-  writable, Ee, FlashloanRepay, Loan, Loans, Vault, PROG_ADDR,
+  check_rent_sysvar, check_sysprog, executable, instructions::check_signer, none_zero_u16,
+  none_zero_u64, none_zero_u8, writable, Ee, FlashloanRepay, Loan, Loans, Vault, PROG_ADDR,
 };
 use core::convert::TryFrom;
 use pinocchio::{
@@ -255,19 +255,6 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     if (txn_accts.len() % 3).ne(&0) {
       return Err(Ee::TxnAcctsLength.into());
     }
-    for i in 0..txn_len {
-      log!("tryFrom loop : i = {}", i);
-      let vault = &txn_accts[i * 3];
-      let vault_ata = &txn_accts[i * 3 + 1];
-      let debtor_ata = &txn_accts[i * 3 + 2];
-
-      writable(vault)?;
-      writable(vault_ata)?;
-      writable(debtor_ata)?;
-      check_pda(vault)?;
-      check_ata(vault_ata, vault, mint)?;
-      check_ata(debtor_ata, signer, mint)?;
-    }
 
     if loans_pda.try_borrow()?.len().ne(&0) {
       return Err(Ee::LoansPdaHasData.into());
@@ -307,7 +294,22 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FlashloanBorrow<'a> {
     if amounts.len() != txn_len {
       return Err(Ee::AmountsLenVsTxnAcctsLen.into());
     }
+    for i in 0..txn_len {
+      log!("tryFrom loop : i = {}", i);
+      let vault = &txn_accts[i * 3];
+      let vault_ata = &txn_accts[i * 3 + 1];
+      let debtor_ata = &txn_accts[i * 3 + 2];
 
+      writable(vault)?;
+      writable(vault_ata)?;
+      writable(debtor_ata)?;
+      check_pda(vault)?;
+      check_ata(vault_ata, vault, mint)?;
+      check_ata(debtor_ata, signer, mint)?;
+      none_zero_u8(vault_bumps[i])?;
+      none_zero_u16(fees[i])?;
+      none_zero_u64(amounts[i])?;
+    }
     Ok(Self {
       signer,
       loans_pda,

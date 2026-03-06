@@ -646,6 +646,12 @@ pub fn none_zero_u64(uint: u64) -> ProgramResult {
   }
   Ok(())
 }
+pub fn none_zero_u16(uint: u16) -> ProgramResult {
+  if uint == 0u16 {
+    return Ee::ZeroU16.e();
+  }
+  Ok(())
+}
 pub fn none_zero_u8(uint: u8) -> ProgramResult {
   if uint == 0u8 {
     return Ee::ZeroU8.e();

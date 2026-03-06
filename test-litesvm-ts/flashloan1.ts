@@ -86,16 +86,7 @@ test("Set USDC Mint and ATAs", () => {
 test("Init Vault", () => {
 	ll("\n----------== Init Vault");
 	signerKp = user1Kp;
-	fee = 500;
-	vaultOut = findVaultV1("Vault", fee);
-	vault = vaultOut.pda;
-	vaultBump = vaultOut.bump;
-	vaultInit(signerKp, vault, fee, vaultBump);
-	acctExists(vault);
-	rawAcctData = getRawAcctData(vault);
-	expect(rawAcctData[0]).toEqual(vaultBump);
-
-	fee = 700;
+	fees = [500, 700]; //u16, to be divided by 10_000
 	vaultOut = findVaultV1("Vault", fee);
 	vault = vaultOut.pda;
 	vaultBump = vaultOut.bump;
