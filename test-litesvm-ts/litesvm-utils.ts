@@ -34,6 +34,7 @@ import {
 	checkTxnAccts,
 	makeDepositIxKeys,
 	makeFlashloanIxKeys,
+	makeVaultInitIxKeys,
 	numToBytes,
 	zero,
 } from "./utils";
@@ -89,28 +90,68 @@ export const findLoansPdaV1 = (user: PublicKey): PdaOut => {
 	return { pda, bump };
 };
 //-------------== Program Methods
+export const vaultInitArgs = (feesX100: number[]) => {
+	ll("------== vaultInitArgs");
+	const amountsLen = feesX100.length;
+
+	let vaultOut: PdaOut;
+	const vaults: PublicKey[] = [];
+	const vaultBumps: number[] = [];
+	for (const [idx, fee] of feesX100.entries()) {
+		ll("idx:", idx);
+		vaultOut = findVaultV1("Vault", fee);
+		vaultBumps.push(vaultOut.bump);
+		vaults.push(vaultOut.pda);
+	}
+	ll("vaultInitArgs successful");
+	return {
+		vaultBumps,
+		vaults,
+		amountsLen,
+	};
+};
 export const vaultInit = (
 	userSigner: Keypair,
-	vaultPda: PublicKey,
 	//configPda: PublicKey,
-	fee: number,
-	vaultBump: number,
+	vaults: PublicKey[],
+	fees: number[],
+	vaultBumps: number[],
 ) => {
 	const disc = 0;
-	checkBump(vaultBump);
-	const argData = [vaultBump, ...numToBytes(fee, 16)];
+	const { ixKeyArray, feesU8 } = makeVaultInitIxKeys(vaults, fees, vaultBumps);
+	const argData = [...vaultBumps, ...feesU8];
+
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: vaultPda, isSigner: false, isWritable: true }, // true
 			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
 			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+			...ixKeyArray,
 		],
 		programId: flashloanProgAddr,
 		data: Buffer.from([disc, ...argData]),
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner]);
+};
+export const checkVaultBumps = (vaults: PublicKey[], vaultBumps: number[]) => {
+	ll("------== checkVaultBumps");
+	const vaultsLen = vaults.length;
+	if (vaultsLen > 8) throw new Error("vaults length should be <= 8");
+	if (vaultsLen !== vaultBumps.length)
+		throw new Error("vaults length != vaultBumps length");
+
+	ll("loop over vaultsLen index...");
+	let bump: number | undefined;
+	let rawAcctData: Uint8Array<ArrayBufferLike>;
+	for (const [i, vault] of vaults.entries()) {
+		bump = vaultBumps[i];
+		if (bump === undefined) throw new Error(`bump ${bump} invalid`);
+		acctExists(vault);
+		rawAcctData = getRawAcctData(vault);
+		expect(rawAcctData[0]).toEqual(bump);
+	}
+	ll("checkVaultBumps successful");
 };
 export const vaultAtaInit = (
 	userSigner: Keypair,
@@ -166,9 +207,11 @@ export const tokLgcDepositArgs = (
 		ll("idx:", idx);
 		const fee = feesX100[idx];
 		if (fee === undefined) throw new Error(`feesX100[${idx}] undefined`);
+		checkFee(fee);
 		vaultOut = findVaultV1("Vault", fee);
 		acctExists(vaultOut.pda);
 
+		checkBump(vaultOut.bump);
 		vaultBumps.push(vaultOut.bump);
 		txnAccts.push(vaultOut.pda);
 		txnAccts.push(getAta(mint, vaultOut.pda));

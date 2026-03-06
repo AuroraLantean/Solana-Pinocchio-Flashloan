@@ -224,6 +224,41 @@ export const makeDepositIxKeys = (txnAccts: PublicKey[], amounts: bigint[]) => {
 	ll("makeDepositIxKeys successful");
 	return { u64bytes, ixKeyArray };
 };
+export const makeVaultInitIxKeys = (
+	vaults: PublicKey[],
+	fees: number[],
+	vaultBumps: number[],
+) => {
+	ll("------== makeVaultInitIxKeys");
+	const vaultsLen = vaults.length;
+	if (vaultsLen > 8) throw new Error("vaults length should be <= 8");
+	if (vaultsLen !== fees.length || vaultsLen !== vaultBumps.length)
+		throw new Error("vaults length != fees length or vaultBumps length");
+
+	ll("loop over vaultsLen index...");
+	const ixKeyArray: IxKeyArray[] = [];
+	let bump: number | undefined;
+	let fee: number | undefined;
+	const feesU8: number[] = [];
+	for (const [i, vault] of vaults.entries()) {
+		fee = fees[i];
+		if (fee === undefined) throw new Error(`fees[i] is undefined`);
+		checkFee(fee);
+		feesU8.push(...numToBytes(fee, 16));
+
+		bump = vaultBumps[i];
+		if (bump === undefined) throw new Error(`bump ${bump} invalid`);
+		checkBump(bump);
+
+		ixKeyArray.push({
+			pubkey: vault,
+			isSigner: false,
+			isWritable: true,
+		});
+	}
+	ll("makeDepositIxKeys successful");
+	return { ixKeyArray, feesU8 };
+};
 //--------------== Bytes
 export const u16Bytes = [0, 0];
 export const u32Bytes = [0, 0, 0, 0];

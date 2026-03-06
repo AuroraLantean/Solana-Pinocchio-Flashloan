@@ -8,8 +8,8 @@ use pinocchio::{
 use pinocchio_log::log;
 
 use crate::{
-  check_data_len, check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u16,
-  none_zero_u8, writable, Ee, Vault, PROG_ADDR,
+  check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u16, none_zero_u8,
+  writable, Ee, Vault, PROG_ADDR,
 };
 
 /// Vault Init
@@ -82,8 +82,8 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
     log!("VaultInit try_from");
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
-    let data_len = 3;
-    check_data_len(data, data_len)?;
+    //let data_len = 3;
+    //check_data_len(data, data_len)?;
 
     let [signer, system_program, rent_sysvar, vaults @ ..] = accounts else {
       return Err(ProgramError::NotEnoughAccountKeys);
@@ -132,7 +132,6 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
       none_zero_u8(vault_bumps[i])?;
       none_zero_u16(fees[i])?;
     }
-    log!("VaultInit try_from 5");
 
     Ok(Self {
       signer,

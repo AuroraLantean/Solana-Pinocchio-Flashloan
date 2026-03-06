@@ -7,11 +7,11 @@ import {
 	acctIsNull,
 	ataArrayBalCk,
 	ataArrayBalc,
+	checkVaultBumps,
 	findVaultV1,
 	flashloan,
 	flashloanArgs,
 	getAta,
-	getRawAcctData,
 	initSolBalc,
 	type PdaOut,
 	setAtaCheck,
@@ -21,6 +21,7 @@ import {
 	tokLgcDepositArgs,
 	vaultAtaInit,
 	vaultInit,
+	vaultInitArgs,
 	//vault1,
 	//vaultAta1,
 	//vaultO,
@@ -47,12 +48,8 @@ let _toAta: PublicKey;
 let _toAtaAta: PublicKey;
 let _tokenProgram: PublicKey;
 let _userAta: PublicKey;
-let rawAcctData: Uint8Array<ArrayBufferLike>;
-let vaultBump: number;
 let decimals: number;
 let fee: number;
-let fees: number[];
-let _amt: bigint;
 let amounts: bigint[];
 let debts: bigint[];
 let balcs: bigint[];
@@ -83,17 +80,13 @@ test("Set USDC Mint and ATAs", () => {
 	setAtaCheck(usdcMint, hacker, initBalc, "Hacker USDC");
 });
 //jj tts 1
+const fees = [500, 700]; //u16, to be divided by 10_000
 test("Init Vault", () => {
 	ll("\n----------== Init Vault");
 	signerKp = user1Kp;
-	fees = [500, 700]; //u16, to be divided by 10_000
-	vaultOut = findVaultV1("Vault", fee);
-	vault = vaultOut.pda;
-	vaultBump = vaultOut.bump;
-	vaultInit(signerKp, vault, fee, vaultBump);
-	acctExists(vault);
-	rawAcctData = getRawAcctData(vault);
-	expect(rawAcctData[0]).toEqual(vaultBump);
+	const { vaultBumps, vaults } = vaultInitArgs(fees);
+	vaultInit(signerKp, vaults, fees, vaultBumps);
+	checkVaultBumps(vaults, vaultBumps);
 });
 test.skip("Init Vault ATA", () => {
 	ll("\n---------== Init Vault ATA");
@@ -116,7 +109,6 @@ test("Deposit Legacy Tokens", () => {
 	signer = signerKp.publicKey;
 
 	amounts = [as6zBn(100000), as6zBn(700000)];
-	fees = [500, 700]; //u16, to be divided by 10_000
 	debts = [0n, 0n];
 	const { txnAccts, userAta } = tokLgcDepositArgs(amounts, fees, mint, signer);
 	balcs = [0n, 0n]; //to replace null balcs
@@ -124,17 +116,13 @@ test("Deposit Legacy Tokens", () => {
 	tokLgcDeposit(signerKp, userAta, mint, decimals, txnAccts, amounts);
 
 	ataArrayBalCk(txnAccts, balcs, amounts, debts, decimals, 2);
-	//ataBalCk(toAta, amt, "vault1");
-	//ataBalCk(userAta, initBalc - amt, "admin ");
 });
 test.skip("Flashloan", () => {
 	ll("\n----------== Flashloan");
 	signerKp = user1Kp;
 	mint = usdcMint;
 	decimals = 6;
-	//TODO: Make tokLgcDepositBatch to deposit to many vaults
 	amounts = [1000n, 2000n];
-	fees = [500, 700]; //u16, to be divided by 10_000
 	const {
 		repayAmts,
 		vaultBumps,
