@@ -116,22 +116,26 @@ export type IxKeyArray = {
 	isWritable: boolean;
 };
 /// Maximum amountsLen is 8, minimum is 1
-export const checkTxnAccts = (txnAcctsLen: number, amountsLen: number) => {
-	if (txnAcctsLen < 3) throw new Error("txnAcctsLen < 3");
+export const checkTxnAccts = (
+	txnAcctsLen: number,
+	amountsLen: number,
+	numInGroup: number,
+) => {
+	if (txnAcctsLen < numInGroup) throw new Error(`txnAcctsLen < ${numInGroup}`);
 	if (amountsLen > 8) throw new Error("amounts length should be <= 8");
-	if (txnAcctsLen % 3 !== 0)
-		throw new Error("txnAccts length should be a multiple of 3");
-	if (txnAcctsLen / 3 !== amountsLen)
-		throw new Error("amounts length should match txnAcctsLen/3");
+	if (txnAcctsLen % numInGroup !== 0)
+		throw new Error(`txnAccts length should be a multiple of ${numInGroup}`);
+	if (txnAcctsLen / numInGroup !== amountsLen)
+		throw new Error(`amounts length should match txnAcctsLen/${numInGroup}`);
 };
-export const makeIxKeyArray = (
+export const makeFlashloanIxKeys = (
 	txnAccts: PublicKey[],
 	amounts: bigint[],
 	decimals: number,
 ) => {
 	const txnAcctsLen = txnAccts.length;
 	const amountsLen = amounts.length;
-	checkTxnAccts(txnAcctsLen, amountsLen);
+	checkTxnAccts(txnAcctsLen, amountsLen, 3);
 
 	ll("loop over amountsLen index...");
 	const u64bytes: number[] = [];
@@ -178,7 +182,46 @@ export const makeIxKeyArray = (
 			isWritable: true,
 		});
 	}
-	ll("makeIxKeyArray successful");
+	ll("makeFlashloanIxKeys successful");
+	return { u64bytes, ixKeyArray };
+};
+export const makeDepositIxKeys = (txnAccts: PublicKey[], amounts: bigint[]) => {
+	ll("------== makeDepositIxKeys");
+	const txnAcctsLen = txnAccts.length;
+	const amountsLen = amounts.length;
+	checkTxnAccts(txnAcctsLen, amountsLen, 2);
+
+	ll("loop over amountsLen index...");
+	const u64bytes: number[] = [];
+	const ixKeyArray: IxKeyArray[] = [];
+	for (const [i, amount] of amounts.entries()) {
+		ll("amount: ", amount);
+		if (amount === undefined) throw new Error("amounts[i] undefined");
+		if (amount === 0n) throw new Error(`amount at {i} is zero`);
+
+		u64bytes.push(...numToBytes(amount, 64));
+		const vaultPda = txnAccts[i * 2];
+		const vaultAta = txnAccts[i * 2 + 1];
+		if (vaultPda === undefined) throw new Error("vaultPda undefined");
+		if (vaultAta === undefined) throw new Error("vaultAta undefined");
+
+		acctExists(vaultPda);
+		ll("vaultPda exists");
+		//acctExists(vaultAta);
+		//ll("vaultAta exists");
+
+		ixKeyArray.push({
+			pubkey: vaultPda,
+			isSigner: false,
+			isWritable: true,
+		});
+		ixKeyArray.push({
+			pubkey: vaultAta,
+			isSigner: false,
+			isWritable: true,
+		});
+	}
+	ll("makeDepositIxKeys successful");
 	return { u64bytes, ixKeyArray };
 };
 //--------------== Bytes

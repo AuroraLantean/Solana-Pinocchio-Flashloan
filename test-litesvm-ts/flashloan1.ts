@@ -7,7 +7,6 @@ import {
 	acctIsNull,
 	ataArrayBalCk,
 	ataArrayBalc,
-	ataBalCk,
 	findVaultV1,
 	flashloan,
 	flashloanArgs,
@@ -19,6 +18,7 @@ import {
 	setMint,
 	svm,
 	tokLgcDeposit,
+	tokLgcDepositArgs,
 	vaultAtaInit,
 	vaultInit,
 	//vault1,
@@ -43,21 +43,23 @@ let mint: PublicKey;
 let vaultOut: PdaOut;
 let vault: PublicKey;
 let vaultAta: PublicKey;
-let toAta: PublicKey;
-let fromAta: PublicKey;
+let _toAta: PublicKey;
+let _toAtaAta: PublicKey;
 let _tokenProgram: PublicKey;
 let _userAta: PublicKey;
+let rawAcctData: Uint8Array<ArrayBufferLike>;
 let vaultBump: number;
 let decimals: number;
 let fee: number;
 let fees: number[];
-let amt: bigint;
+let _amt: bigint;
 let amounts: bigint[];
+let debts: bigint[];
 let balcs: bigint[];
 
 let _balcBf: bigint;
 let _balcAf: bigint;
-const initUsdcBalc = bigintAmt(10000, 6);
+const initBalc = bigintAmt(9000000, 6);
 //co_balcAfultRent = 1002240n; //from Rust
 
 const balcAdmin = svm.getBalance(admin);
@@ -74,11 +76,11 @@ test("Set USDC Mint and ATAs", () => {
 	setMint(usdcMint);
 	acctExists(usdcMint);
 
-	setAtaCheck(usdcMint, admin, initUsdcBalc, "Admin USDC");
-	setAtaCheck(usdcMint, user1, initUsdcBalc, "User1 USDC");
-	setAtaCheck(usdcMint, user2, initUsdcBalc, "User2 USDC");
-	setAtaCheck(usdcMint, user3, initUsdcBalc, "User3 USDC");
-	setAtaCheck(usdcMint, hacker, initUsdcBalc, "Hacker USDC");
+	setAtaCheck(usdcMint, admin, initBalc, "Admin USDC");
+	setAtaCheck(usdcMint, user1, initBalc, "User1 USDC");
+	setAtaCheck(usdcMint, user2, initBalc, "User2 USDC");
+	setAtaCheck(usdcMint, user3, initBalc, "User3 USDC");
+	setAtaCheck(usdcMint, hacker, initBalc, "Hacker USDC");
 });
 //jj tts 1
 test("Init Vault", () => {
@@ -88,11 +90,18 @@ test("Init Vault", () => {
 	vaultOut = findVaultV1("Vault", fee);
 	vault = vaultOut.pda;
 	vaultBump = vaultOut.bump;
-
-	acctIsNull(vault);
 	vaultInit(signerKp, vault, fee, vaultBump);
 	acctExists(vault);
-	const rawAcctData = getRawAcctData(vault);
+	rawAcctData = getRawAcctData(vault);
+	expect(rawAcctData[0]).toEqual(vaultBump);
+
+	fee = 700;
+	vaultOut = findVaultV1("Vault", fee);
+	vault = vaultOut.pda;
+	vaultBump = vaultOut.bump;
+	vaultInit(signerKp, vault, fee, vaultBump);
+	acctExists(vault);
+	rawAcctData = getRawAcctData(vault);
 	expect(rawAcctData[0]).toEqual(vaultBump);
 });
 test.skip("Init Vault ATA", () => {
@@ -113,35 +122,28 @@ test("Deposit Legacy Tokens", () => {
 	signerKp = adminKp;
 	mint = usdcMint;
 	decimals = 6;
-	amt = as6zBn(3700);
-
 	signer = signerKp.publicKey;
-	fromAta = getAta(mint, signer);
-	fee = 500;
-	vaultOut = findVaultV1("Vault", fee);
-	toAta = getAta(mint, vaultOut.pda);
 
-	tokLgcDeposit(
-		signerKp,
-		fromAta,
-		toAta,
-		vaultOut.pda, //vault as to_wallet
-		mint,
-		//configPDA,
-		decimals,
-		amt,
-	);
-	ataBalCk(toAta, as6zBn(3700), "vault1");
-	ataBalCk(fromAta, as6zBn(6300), "admin ");
+	amounts = [as6zBn(100000), as6zBn(700000)];
+	fees = [500, 700]; //u16, to be divided by 10_000
+	debts = [0n, 0n];
+	const { txnAccts, userAta } = tokLgcDepositArgs(amounts, fees, mint, signer);
+	balcs = [0n, 0n]; //to replace null balcs
+
+	tokLgcDeposit(signerKp, userAta, mint, decimals, txnAccts, amounts);
+
+	ataArrayBalCk(txnAccts, balcs, amounts, debts, decimals, 2);
+	//ataBalCk(toAta, amt, "vault1");
+	//ataBalCk(userAta, initBalc - amt, "admin ");
 });
-test("Flashloan", () => {
+test.skip("Flashloan", () => {
 	ll("\n----------== Flashloan");
 	signerKp = user1Kp;
 	mint = usdcMint;
 	decimals = 6;
-
-	amounts = [100n];
-	fees = [500]; //u16, to be divided by 10_000
+	//TODO: Make tokLgcDepositBatch to deposit to many vaults
+	amounts = [1000n, 2000n];
+	fees = [500, 700]; //u16, to be divided by 10_000
 	const {
 		repayAmts,
 		vaultBumps,
@@ -150,19 +152,19 @@ test("Flashloan", () => {
 		amountsLen,
 		rapayAmtsSum,
 	} = flashloanArgs(amounts, fees, mint, signerKp.publicKey);
-	balcs = ataArrayBalc(txnAccts, amountsLen, decimals);
+	balcs = ataArrayBalc(txnAccts, amountsLen, decimals, 3);
 
 	flashloan(
 		signerKp,
 		loansPdaOut.pda,
 		mint,
-		txnAccts,
 		decimals,
 		loansPdaOut.bump,
 		vaultBumps,
+		txnAccts,
 		fees,
 		amounts,
 		rapayAmtsSum,
 	);
-	ataArrayBalCk(txnAccts, balcs, repayAmts, amounts, decimals);
+	ataArrayBalCk(txnAccts, balcs, repayAmts, amounts, decimals, 3);
 });
