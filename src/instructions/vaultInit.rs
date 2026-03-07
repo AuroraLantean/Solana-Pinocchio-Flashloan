@@ -70,6 +70,8 @@ impl<'a> VaultInit<'a> {
 
       vault.check_borrow_mut()?;
       let vault: &mut Vault = Vault::from_account_view(&vault)?;
+      vault.set_admin(signer.address());
+      vault.set_token_balc(*fee as u64)?;
       vault.set_bump(*vault_bump)?;
     }
     Ok(())

@@ -23,6 +23,10 @@ export const flashloanProgAddr = new PublicKey(
 	"FcLwqf7L3VyxWuMKKzLA7vJqBo8bj9i3zHkxLe65Z1Ad",
 );
 ll("flashloanProgAddr:", flashloanProgAddr.toBase58());
+export const funcCaller = new PublicKey(
+	"8ZEf7xqzjxELMywQbCEeYVgw9zDCijA3saDCHZwgbe7i",
+);
+ll("funcCaller:", funcCaller.toBase58());
 export const futureOptionAddr = new PublicKey(
 	"CgZEcSRPh1Ay1EYR4VJPTJRYcRkTDjjZhBAjZ5M8keGp",
 );

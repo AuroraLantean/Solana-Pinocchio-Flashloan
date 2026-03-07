@@ -7,7 +7,7 @@ import {
 	acctIsNull,
 	ataArrayBalCk,
 	ataArrayBalc,
-	checkVaultBumps,
+	checkVaultData,
 	findVaultV1,
 	flashloan,
 	flashloanArgs,
@@ -40,7 +40,6 @@ import {
 
 let signerKp: Keypair;
 let signer: PublicKey;
-let mint: PublicKey;
 let vaultOut: PdaOut;
 let vault: PublicKey;
 let vaultAta: PublicKey;
@@ -48,7 +47,7 @@ let _toAta: PublicKey;
 let _toAtaAta: PublicKey;
 let _tokenProgram: PublicKey;
 let _userAta: PublicKey;
-let decimals: number;
+let arrLen: number;
 let fee: number;
 let amounts: bigint[];
 let debts: bigint[];
@@ -81,12 +80,15 @@ test("Set USDC Mint and ATAs", () => {
 });
 //jj tts 1
 const fees = [500, 700]; //u16, to be divided by 10_000
+const mint = usdcMint;
+const decimals = 6;
 test("Init Vault", () => {
 	ll("\n----------== Init Vault");
 	signerKp = user1Kp;
 	const { vaultBumps, vaults } = vaultInitArgs(fees);
 	vaultInit(signerKp, vaults, fees, vaultBumps);
-	checkVaultBumps(vaults, vaultBumps);
+	ll("signer:", signerKp.publicKey.toBase58());
+	checkVaultData(vaults, fees, vaultBumps);
 });
 test.skip("Init Vault ATA", () => {
 	ll("\n---------== Init Vault ATA");
@@ -94,7 +96,6 @@ test.skip("Init Vault ATA", () => {
 	fee = 500;
 	vaultOut = findVaultV1("Vault", fee);
 	vault = vaultOut.pda;
-	mint = usdcMint;
 	vaultAta = getAta(mint, vault);
 
 	acctIsNull(vaultAta);
@@ -104,33 +105,24 @@ test.skip("Init Vault ATA", () => {
 test("Deposit Legacy Tokens", () => {
 	ll("\n----------== Deposit Legacy Tokens");
 	signerKp = adminKp;
-	mint = usdcMint;
-	decimals = 6;
 	signer = signerKp.publicKey;
 
 	amounts = [as6zBn(100000), as6zBn(700000)];
+	arrLen = amounts.length;
 	debts = [0n, 0n];
-	const { txnAccts, userAta } = tokLgcDepositArgs(amounts, fees, mint, signer);
+	const { depAccts, userAta } = tokLgcDepositArgs(arrLen, fees, mint, signer);
 	balcs = [0n, 0n]; //to replace null balcs
 
-	tokLgcDeposit(signerKp, userAta, mint, decimals, txnAccts, amounts);
+	tokLgcDeposit(signerKp, userAta, mint, decimals, depAccts, amounts);
 
-	ataArrayBalCk(txnAccts, balcs, amounts, debts, decimals, 2);
+	ataArrayBalCk(depAccts, balcs, amounts, debts, decimals, 2);
 });
-test.skip("Flashloan", () => {
+test("Flashloan", () => {
 	ll("\n----------== Flashloan");
 	signerKp = user1Kp;
-	mint = usdcMint;
-	decimals = 6;
 	amounts = [1000n, 2000n];
-	const {
-		repayAmts,
-		vaultBumps,
-		txnAccts,
-		loansPdaOut,
-		amountsLen,
-		rapayAmtsSum,
-	} = flashloanArgs(amounts, fees, mint, signerKp.publicKey);
+	const { repayAmts, vaultBumps, txnAccts, loansPdaOut, amountsLen } =
+		flashloanArgs(amounts, fees, mint, signerKp.publicKey);
 	balcs = ataArrayBalc(txnAccts, amountsLen, decimals, 3);
 
 	flashloan(
@@ -143,7 +135,7 @@ test.skip("Flashloan", () => {
 		txnAccts,
 		fees,
 		amounts,
-		rapayAmtsSum,
+		repayAmts,
 	);
 	ataArrayBalCk(txnAccts, balcs, repayAmts, amounts, decimals, 3);
 });

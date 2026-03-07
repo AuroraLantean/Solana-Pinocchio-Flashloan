@@ -1,18 +1,17 @@
 //use pinocchio::{error::ProgramError, AccountView, Address, ProgramResult};
 //use crate::{none_zero_u64, Ee, PROG_ADDR};
 
-use pinocchio::{error::ProgramError, AccountView, ProgramResult};
+use pinocchio::{error::ProgramError, AccountView, Address, ProgramResult};
 
-use crate::{none_zero_u8, Ee, PROG_ADDR};
+use crate::{none_zero_u64, none_zero_u8, Ee, PROG_ADDR};
 
 //------------==
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct Vault {
-  //mint: Address, //32
-  //id: [u8; 8],   //8
-  //decimal: u8,   //1
-  bump: u8, //1
+  admin: Address,      //32
+  token_balc: [u8; 8], //8
+  bump: u8,            //1
 }
 impl Vault {
   pub const LEN: usize = core::mem::size_of::<Vault>();
@@ -20,17 +19,22 @@ impl Vault {
 
   pub const SEED: &[u8] = b"vault";
 
-  /*pub fn mint(&self) -> &Address {
-    &self.mint
+  pub fn admin(&self) -> &Address {
+    &self.admin
   }
-  pub fn id(&self) -> u64 {
-    u64::from_le_bytes(self.id)
+  pub fn token_balc(&self) -> u64 {
+    u64::from_le_bytes(self.token_balc)
   }
-  pub fn decimal(&self) -> u8 {
-    self.decimal
-  }*/
   pub fn bump(&self) -> u8 {
     self.bump
+  }
+  pub fn set_admin(&mut self, addr: &Address) {
+    self.admin = addr.clone();
+  }
+  pub fn set_token_balc(&mut self, amt: u64) -> ProgramResult {
+    none_zero_u64(amt)?;
+    self.token_balc = amt.to_le_bytes();
+    Ok(())
   }
   pub fn set_bump(&mut self, bump: u8) -> ProgramResult {
     none_zero_u8(bump)?;

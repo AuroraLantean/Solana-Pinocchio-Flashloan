@@ -330,7 +330,15 @@ export const bytesToBigint = (bytes: Uint8Array) => {
 	ll("bytesToBigint:", bigint);
 	return bigint;
 };
-
+export const u8ArrayToStr = (u8Array: Uint8Array) => {
+	const filterred = u8Array.filter((item) => item !== 0);
+	const str = Buffer.from(filterred).toString();
+	//ll("string:", str, str.length);
+	//const str2 = String.fromCharCode.apply(null, filterred);
+	//ll("string:", str2, str2.length);
+	ll("string:", str);
+	return str;
+};
 //--------------==
 export const llBl = (txt: string) => {
 	ll(chalk.blue(txt));

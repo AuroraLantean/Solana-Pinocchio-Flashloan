@@ -1,4 +1,5 @@
 import { expect } from "bun:test";
+import { getAddressDecoder } from "@solana/kit";
 import {
 	ACCOUNT_SIZE,
 	AccountLayout,
@@ -24,10 +25,9 @@ import {
 	type SimulatedTransactionInfo,
 	TransactionMetadata,
 } from "litesvm";
-
 import {
 	bigIntSum,
-	checkBigint,
+	bytesToBigint,
 	checkBump,
 	checkDecimals,
 	checkFee,
@@ -42,6 +42,7 @@ import {
 	ATokenGPvbd,
 	admin,
 	flashloanProgAddr,
+	funcCaller,
 	hacker,
 	owner,
 	RentSysvar,
@@ -134,24 +135,41 @@ export const vaultInit = (
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner]);
 };
-export const checkVaultBumps = (vaults: PublicKey[], vaultBumps: number[]) => {
-	ll("------== checkVaultBumps");
+export const checkVaultData = (
+	vaults: PublicKey[],
+	fees: number[],
+	vaultBumps: number[],
+) => {
+	ll("------== checkVaultData");
 	const vaultsLen = vaults.length;
 	if (vaultsLen > 8) throw new Error("vaults length should be <= 8");
 	if (vaultsLen !== vaultBumps.length)
 		throw new Error("vaults length != vaultBumps length");
 
+	const addressDecoder = getAddressDecoder();
 	ll("loop over vaultsLen index...");
+	let tokenBalc: bigint;
+	let fee: number | undefined;
 	let bump: number | undefined;
+	let addrStr = "";
+	let addrBytes: Uint8Array<ArrayBufferLike>;
 	let rawAcctData: Uint8Array<ArrayBufferLike>;
 	for (const [i, vault] of vaults.entries()) {
+		fee = fees[i];
 		bump = vaultBumps[i];
-		if (bump === undefined) throw new Error(`bump ${bump} invalid`);
+		if (bump === undefined || fee === undefined)
+			throw new Error(`bump ${bump} invalid`);
 		acctExists(vault);
 		rawAcctData = getRawAcctData(vault);
-		expect(rawAcctData[0]).toEqual(bump);
+		addrBytes = rawAcctData.slice(0, 32);
+		addrStr = addressDecoder.decode(addrBytes);
+		ll("addrStr:", addrStr);
+		tokenBalc = bytesToBigint(rawAcctData.slice(32, 40));
+		ll("tokenBalc:", tokenBalc, ", bump:", bump);
+		expect(tokenBalc).toEqual(BigInt(fee));
+		expect(rawAcctData[40]).toEqual(bump);
 	}
-	ll("checkVaultBumps successful");
+	ll("checkVaultData successful");
 };
 export const vaultAtaInit = (
 	userSigner: Keypair,
@@ -188,24 +206,22 @@ export const vaultAtaInit = (
 };
 
 export const tokLgcDepositArgs = (
-	amounts: bigint[],
+	depositAmtsLen: number,
 	feesX100: number[],
 	mint: PublicKey,
 	signer: PublicKey,
 ) => {
 	ll("------== tokLgcDepositArgs");
-	const amountsLen = amounts.length;
-	if (amountsLen !== feesX100.length)
-		throw new Error("amounts length should be the same as feesX100");
+	if (depositAmtsLen !== feesX100.length)
+		throw new Error("depositAmts length should be the same as feesX100");
 	const userAta = getAta(mint, signer);
 	acctExists(userAta);
 
 	let vaultOut: PdaOut;
-	const txnAccts: PublicKey[] = [];
+	const depAccts: PublicKey[] = [];
 	const vaultBumps: number[] = [];
-	for (const [idx, _amount] of amounts.entries()) {
+	for (const [idx, fee] of feesX100.entries()) {
 		ll("idx:", idx);
-		const fee = feesX100[idx];
 		if (fee === undefined) throw new Error(`feesX100[${idx}] undefined`);
 		checkFee(fee);
 		vaultOut = findVaultV1("Vault", fee);
@@ -213,40 +229,37 @@ export const tokLgcDepositArgs = (
 
 		checkBump(vaultOut.bump);
 		vaultBumps.push(vaultOut.bump);
-		txnAccts.push(vaultOut.pda);
-		txnAccts.push(getAta(mint, vaultOut.pda));
+		depAccts.push(vaultOut.pda);
+		depAccts.push(getAta(mint, vaultOut.pda));
 	}
 	ll("tokLgcDepositArgs successful");
 	return {
 		vaultBumps,
-		txnAccts,
-		amountsLen,
+		depAccts,
 		userAta,
 	};
 };
-export const tokLgcDeposit = (
+export const tokLgcDepositIx = (
 	userSigner: Keypair,
 	fromAta: PublicKey,
 	mint: PublicKey,
 	//configPda: PublicKey,
 	decimals: number,
-	txnAccts: PublicKey[], //[vault, vaultAta,...]
-	amounts: bigint[],
+	depositAccts: PublicKey[], //[vault, vaultAta,...]
+	depositAmts: bigint[],
 	tokenProg = TOKEN_PROGRAM_ID,
 	atokenProg = ATokenGPvbd,
 ) => {
-	ll("------== tokLgcDeposit");
 	const disc = 2;
 	checkDecimals(decimals);
-	const amountsSum = bigIntSum(amounts);
+	const amountsSum = bigIntSum(depositAmts);
 
 	const userTokBalc = ataBalc(fromAta, `userAta`, decimals, true);
 	if (userTokBalc === 0n) throw new Error("userTokBalc is zero");
 	if (amountsSum > userTokBalc) throw new Error("amount > userTokBalc");
 
-	const { u64bytes, ixKeyArray } = makeDepositIxKeys(txnAccts, amounts);
+	const { u64bytes, ixKeyArray } = makeDepositIxKeys(depositAccts, depositAmts);
 	const argData = [decimals, ...u64bytes];
-	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
 		keys: [
 			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
@@ -262,6 +275,32 @@ export const tokLgcDeposit = (
 		programId: flashloanProgAddr,
 		data: Buffer.from([disc, ...argData]),
 	});
+	return ix;
+};
+export const tokLgcDeposit = (
+	userSigner: Keypair,
+	fromAta: PublicKey,
+	mint: PublicKey,
+	//configPda: PublicKey,
+	decimals: number,
+	depositAccts: PublicKey[], //[vault, vaultAta,...]
+	depositAmts: bigint[],
+	tokenProg = TOKEN_PROGRAM_ID,
+	atokenProg = ATokenGPvbd,
+) => {
+	ll("------== tokLgcDeposit");
+	const ix = tokLgcDepositIx(
+		userSigner,
+		fromAta,
+		mint,
+		//configPda,
+		decimals,
+		depositAccts,
+		depositAmts,
+		tokenProg,
+		atokenProg,
+	);
+	const blockhash = svm.latestBlockhash();
 	sendTxns(svm, blockhash, [ix], [userSigner]);
 };
 
@@ -301,7 +340,6 @@ export const flashloanArgs = (
 		txnAccts.push(getAta(mint, vaultOut.pda));
 		txnAccts.push(userAta);
 	}
-	const rapayAmtsSum = bigIntSum(repayAmts);
 	ll("flashloanArgs successful");
 	return {
 		repayAmts,
@@ -309,12 +347,10 @@ export const flashloanArgs = (
 		txnAccts,
 		loansPdaOut,
 		amountsLen,
-		rapayAmtsSum,
 	};
 };
 export const flashloan = (
 	userSigner: Keypair,
-	//vaultPda: PublicKey,
 	loansPda: PublicKey,
 	mint: PublicKey,
 	//configPda: PublicKey,
@@ -324,7 +360,7 @@ export const flashloan = (
 	txnAccts: PublicKey[], //[vaultAta, userAta, ...]
 	fees: number[],
 	amounts: bigint[],
-	repayAmount: bigint,
+	repayAmts: bigint[],
 	tokenProg = TOKEN_PROGRAM_ID,
 	atokenProg = ATokenGPvbd,
 ) => {
@@ -351,30 +387,25 @@ export const flashloan = (
 	const blockhash = svm.latestBlockhash();
 
 	//--------== Deposit
-	const discDeposit = 2;
-	const vaultPda = txnAccts[0];
-	const vaultAta = txnAccts[1];
-	const userAta = txnAccts[2];
-	if (!vaultPda || !vaultAta || !userAta)
-		throw new Error("vaultPda, vaultAta, or userAta is undefined");
-	checkBigint(repayAmount, "repayAmount");
-	const argDataDeposit = [decimals, ...numToBytes(repayAmount)];
-	const ixDeposit = new TransactionInstruction({
-		keys: [
-			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: userAta, isSigner: false, isWritable: true },
-			{ pubkey: vaultAta, isSigner: false, isWritable: true },
-			{ pubkey: vaultPda, isSigner: false, isWritable: true }, // true
-			{ pubkey: mint, isSigner: false, isWritable: false },
-			//{ pubkey: configPda, isSigner: false, isWritable: true },
-			{ pubkey: tokenProg, isSigner: false, isWritable: false },
-			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
-			{ pubkey: atokenProg, isSigner: false, isWritable: false },
-			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
-		],
-		programId: flashloanProgAddr,
-		data: Buffer.from([discDeposit, ...argDataDeposit]),
-	});
+	//const rapayAmts = [as6zBn(100000), as6zBn(700000)];
+	const arrLen = amounts.length;
+	const { depAccts, userAta } = tokLgcDepositArgs(
+		arrLen,
+		fees,
+		mint,
+		userSigner.publicKey,
+	);
+	const ixDeposit = tokLgcDepositIx(
+		userSigner,
+		userAta,
+		mint,
+		//configPda,
+		decimals,
+		depAccts,
+		repayAmts,
+		tokenProg,
+		atokenProg,
+	);
 	//--------== FlashloanBorrow
 	const ix0 = new TransactionInstruction({
 		keys: [
@@ -714,7 +745,10 @@ export const setAtaCheck = (
 	}
 };
 //---------------== Deployment
-export const deployFlashloanProgram = (computeMaxUnits?: bigint) => {
+export const deployFlashloanProgram = (
+	addr: PublicKey,
+	computeMaxUnits?: bigint,
+) => {
 	ll("load deployFlashloanProgram...");
 	if (computeMaxUnits) {
 		const computeBudget = new ComputeBudget();
@@ -725,10 +759,11 @@ export const deployFlashloanProgram = (computeMaxUnits?: bigint) => {
 	//# Dump a program from mainnet
 	//solana program dump progAddr pyth.so --url mainnet-beta
 
-	svm.addProgramFromFile(flashloanProgAddr, programPath);
+	svm.addProgramFromFile(addr, programPath);
 	//return [programId];
 };
-deployFlashloanProgram();
+deployFlashloanProgram(flashloanProgAddr);
+deployFlashloanProgram(funcCaller);
 ll("deployFlashloanProgram() is successful");
 acctExists(flashloanProgAddr);
 
