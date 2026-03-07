@@ -42,7 +42,7 @@ import {
 	ATokenGPvbd,
 	admin,
 	flashloanProgAddr,
-	funcCaller,
+	funcCallerProgAddr,
 	hacker,
 	owner,
 	RentSysvar,
@@ -94,7 +94,6 @@ export const findLoansPdaV1 = (user: PublicKey): PdaOut => {
 export const vaultInitArgs = (feesX100: number[]) => {
 	ll("------== vaultInitArgs");
 	const amountsLen = feesX100.length;
-
 	let vaultOut: PdaOut;
 	const vaults: PublicKey[] = [];
 	const vaultBumps: number[] = [];
@@ -747,6 +746,7 @@ export const setAtaCheck = (
 //---------------== Deployment
 export const deployFlashloanProgram = (
 	addr: PublicKey,
+	programPath = "target/deploy/pinocchio_flashloan.so",
 	computeMaxUnits?: bigint,
 ) => {
 	ll("load deployFlashloanProgram...");
@@ -755,7 +755,6 @@ export const deployFlashloanProgram = (
 		computeBudget.computeUnitLimit = computeMaxUnits;
 		svm = svm.withComputeBudget(computeBudget);
 	}
-	const programPath = "target/deploy/pinocchio_flashloan.so";
 	//# Dump a program from mainnet
 	//solana program dump progAddr pyth.so --url mainnet-beta
 
@@ -763,9 +762,13 @@ export const deployFlashloanProgram = (
 	//return [programId];
 };
 deployFlashloanProgram(flashloanProgAddr);
-deployFlashloanProgram(funcCaller);
-ll("deployFlashloanProgram() is successful");
 acctExists(flashloanProgAddr);
+ll("deployFlashloanProgram() is successful");
+deployFlashloanProgram(
+	funcCallerProgAddr,
+	"program_bytes/pinocchio_flashloan.so",
+); //which is compiled with different declare_id!(new_addr)
+acctExists(funcCallerProgAddr);
 
 //---------------== Run Test
 export const sendTxns = (

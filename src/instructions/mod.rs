@@ -100,9 +100,10 @@ pub enum ProgramIx {
   /// 5 FuncCaller
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
-  #[account(1, name = "system_program", desc = "System Program")]
-  #[account(2, name = "rent_sysvar", desc = "Rent Sysvar")]
-  #[account(3, writable, name = "vault", desc = "Vault PDA")]
+  #[account(1, name = "target_prog", desc = "Target Program")]
+  #[account(2, name = "system_program", desc = "System Program")]
+  #[account(3, name = "rent_sysvar", desc = "Rent Sysvar")]
+  #[account(4, writable, name = "vault", desc = "Vault PDA")]
   FuncCaller { vault_bump: u8, fee: u16 },
   //---------------== Admin PDA
   //---------------== User PDA

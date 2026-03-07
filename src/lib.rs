@@ -18,7 +18,13 @@ pub use state::*;
 //#[cfg(test)]
 //mod litesvm_helpers;
 
-declare_id!("FcLwqf7L3VyxWuMKKzLA7vJqBo8bj9i3zHkxLe65Z1Ad"); //crate::ID
+declare_id!("FcLwqf7L3VyxWuMKKzLA7vJqBo8bj9i3zHkxLe65Z1Ad");
+//declare_id!("8ZEf7xqzjxELMywQbCEeYVgw9zDCijA3saDCHZwgbe7i");
+//crate::ID
+//change declare_id!() to 8ZEf7
+// jj build2;
+//change declare_id!() back to FcLwq
+// jjb ; jj tts 2
 pub const PROG_ADDR: Address = Address::new_from_array(ID);
 pub const TOKEN_LGC_ADDR: Address =
   Address::from_str_const("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
@@ -45,7 +51,7 @@ fn process_instruction(
     TokLgcDeposit::DISCRIMINATOR => TokLgcDeposit::try_from((data, accounts))?.process(),
     FlashloanBorrow::DISCRIMINATOR => FlashloanBorrow::try_from((data, accounts))?.process(),
     FlashloanRepay::DISCRIMINATOR => FlashloanRepay::try_from((data, accounts))?.process(),
-    //FuncCaller::DISCRIMINATOR => FuncCaller::try_from((data, accounts))?.process(),
+    FuncCaller::DISCRIMINATOR => FuncCaller::try_from((data, accounts))?.process(),
     _ => Err(Ee::MethodDiscriminator.into()),
   } //file names start with a lower case + Camel cases, but struct names start with Upper case + Camel cases!
 }

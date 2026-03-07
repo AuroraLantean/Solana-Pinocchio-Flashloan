@@ -120,7 +120,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInit<'a> {
         fees_slice.len() / size_of::<u16>(),
       )
     };
-    log!("fees: {}", fees);
+    log!("fees: {}, data.len(): {}", fees, data.len());
     if data.len() > 0 {
       return Err(Ee::InputDataLen.into());
     }

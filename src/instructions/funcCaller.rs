@@ -1,9 +1,9 @@
-use core::{convert::TryFrom, slice::from_raw_parts};
+use core::convert::TryFrom;
 use pinocchio::{
   cpi::invoke_signed,
   error::ProgramError,
   instruction::{InstructionAccount, InstructionView},
-  AccountView, Address, ProgramResult,
+  AccountView, ProgramResult,
 };
 use pinocchio_log::log;
 
@@ -15,6 +15,7 @@ use crate::{
 /// FuncCaller
 pub struct FuncCaller<'a> {
   pub signer: &'a AccountView,
+  pub target_prog: &'a AccountView,
   pub vaults: &'a [AccountView],
   //pub config_pda: &'a AccountView,
   pub system_program: &'a AccountView,
@@ -28,6 +29,7 @@ impl<'a> FuncCaller<'a> {
   pub fn process(self) -> ProgramResult {
     let FuncCaller {
       signer,
+      target_prog,
       vaults,
       //config_pda,
       system_program,
@@ -36,40 +38,54 @@ impl<'a> FuncCaller<'a> {
       vault_bumps,
     } = self;
     log!("---------== process()");
+    if vaults.len() != 2 {
+      return Ee::TxnAcctsLength.e();
+    }
+    log!("FuncCaller 1");
     let instruction_accounts: [InstructionAccount; 5] = [
       InstructionAccount::writable_signer(signer.address()),
-      //InstructionAccount::readonly_signer(signer.address()),
       InstructionAccount::readonly(system_program.address()),
       InstructionAccount::readonly(rent_sysvar.address()),
       InstructionAccount::writable((vaults[0]).address()),
       InstructionAccount::writable((vaults[1]).address()),
     ];
+    log!("FuncCaller 2");
     let account_views = &[signer, system_program, rent_sysvar, &vaults[0], &vaults[1]];
+
     // Instruction data layout:
-    // -  [0]: instruction discriminator (1 byte, u8)
-    // -  [1..9]: amount (8 bytes, u64)
-    // -  [9]: decimals (1 byte, u8)
-    const LEN: usize = 10;
+    // - [0 ]: Pinocchio func discriminator
+    // - [1..3 ]: vault_bumps
+    // - [3..7 ]: feess
+    const LEN: usize = 7;
     let mut instruction_data = [0u8; LEN];
 
-    // Set discriminator 0 as u8 at offset [0]
+    log!("FuncCaller 4");
+    // Set discriminator 0 as u8 at index 0
     instruction_data[0] = 0;
-    instruction_data[1..3].copy_from_slice(vault_bumps);
+    instruction_data[1..1 + vault_bumps.len()].copy_from_slice(vault_bumps);
 
-    //[3..7]
+    log!(
+      "FuncCaller 5. instruction_data: {}, len(): {}",
+      &instruction_data,
+      instruction_data.len()
+    );
+    //[3..7] vault_bumps (2x1 bytes, u8)
     for (idx, _bump) in vault_bumps.iter().enumerate() {
+      log!("index: {}, instruction_data: {}", idx, &instruction_data);
+      //instruction_data[idx + 1] = *bump;
       let fee = fees[idx].to_le_bytes();
       instruction_data[idx * 2 + 3..idx * 2 + 5].copy_from_slice(&fee);
     }
-
     // Set amount as u64 at offset [1..9]
     //write_bytes(&mut instruction_data[1..9], &self.amount.to_le_bytes());
 
+    log!("FuncCaller 6");
     let instruction = InstructionView {
-      program_id: &Address::from_str_const("FcLwqf7L3VyxWuMKKzLA7vJqBo8bj9i3zHkxLe65Z1Ad"),
+      program_id: target_prog.address(),
       accounts: &instruction_accounts,
-      data: unsafe { from_raw_parts(instruction_data.as_ptr() as _, LEN) },
+      data: &instruction_data, //unsafe { from_raw_parts(instruction_data.as_ptr() as _, LEN) },
     };
+    log!("FuncCaller 7");
     invoke_signed(&instruction, account_views, &[])?;
     Ok(())
   }
@@ -84,7 +100,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FuncCaller<'a> {
     //let data_len = 3;
     //check_data_len(data, data_len)?;
 
-    let [signer, system_program, rent_sysvar, vaults @ ..] = accounts else {
+    let [signer, target_prog, system_program, rent_sysvar, vaults @ ..] = accounts else {
       return Err(ProgramError::NotEnoughAccountKeys);
     };
     check_signer(signer)?;
@@ -134,6 +150,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FuncCaller<'a> {
 
     Ok(Self {
       signer,
+      target_prog,
       vaults,
       //config_pda,
       system_program,
