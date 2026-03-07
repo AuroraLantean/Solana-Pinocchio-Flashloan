@@ -4,8 +4,8 @@
 pub mod flashloanBorrow;
 #[allow(non_snake_case)]
 pub mod flashloanRepay;
-//#[allow(non_snake_case)]
-//pub mod funcCaller;
+#[allow(non_snake_case)]
+pub mod funcCaller;
 #[allow(non_snake_case)]
 pub mod tokLgcDeposit;
 #[allow(non_snake_case)]
@@ -18,7 +18,7 @@ pub mod utils;
 //file names start with a lower case + Camel cases, but struct names start with Upper case + Camel cases!
 pub use flashloanBorrow::*;
 pub use flashloanRepay::*;
-//pub use funcCaller::*;
+pub use funcCaller::*;
 pub use tokLgcDeposit::*;
 pub use utils::*;
 pub use vaultAtaInit::*;
@@ -96,6 +96,14 @@ pub enum ProgramIx {
   #[account(3, writable, name = "vault_ata", desc = "Vault ATA")]
   #[account(4, writable, name = "debtor_ata", desc = "Debtor ATA")]
   FlashloanRepay {},
+
+  /// 5 FuncCaller
+  #[account(0, signer, writable, name = "signer", desc = "signer")]
+  //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
+  #[account(1, name = "system_program", desc = "System Program")]
+  #[account(2, name = "rent_sysvar", desc = "Rent Sysvar")]
+  #[account(3, writable, name = "vault", desc = "Vault PDA")]
+  FuncCaller { vault_bump: u8, fee: u16 },
   //---------------== Admin PDA
   //---------------== User PDA
   //---------------== Action PDA
