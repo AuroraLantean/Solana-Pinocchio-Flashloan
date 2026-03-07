@@ -170,6 +170,32 @@ export const checkVaultData = (
 	}
 	ll("checkVaultData successful");
 };
+export const funcCaller = (
+	userSigner: Keypair,
+	target_prog: PublicKey,
+	//configPda: PublicKey,
+	vaults: PublicKey[],
+	fees: number[],
+	vaultBumps: number[],
+) => {
+	const disc = 5;
+	const { ixKeyArray, feesU8 } = makeVaultInitIxKeys(vaults, fees, vaultBumps);
+	const argData = [...vaultBumps, ...feesU8];
+
+	const blockhash = svm.latestBlockhash();
+	const ix = new TransactionInstruction({
+		keys: [
+			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+			{ pubkey: target_prog, isSigner: false, isWritable: false },
+			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+			...ixKeyArray,
+		],
+		programId: funcCallerProgAddr,
+		data: Buffer.from([disc, ...argData]),
+	});
+	sendTxns(svm, blockhash, [ix], [userSigner], "", funcCallerProgAddr);
+};
 export const vaultAtaInit = (
 	userSigner: Keypair,
 	vaultPda: PublicKey,
