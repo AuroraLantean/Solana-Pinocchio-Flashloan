@@ -1,4 +1,4 @@
-use core::convert::TryFrom;
+use core::{convert::TryFrom, mem::MaybeUninit, slice::from_raw_parts};
 use pinocchio::{
   cpi::invoke_signed,
   error::ProgramError,
@@ -7,101 +7,70 @@ use pinocchio::{
 };
 use pinocchio_log::log;
 
-use crate::{
-  check_rent_sysvar, check_sysprog, instructions::check_signer, none_zero_u16, none_zero_u8,
-  writable, Ee,
-};
+use crate::{check_rent_sysvar, check_sysprog, instructions::check_signer, Ee};
 
-/// PinoVaultInitCaller
-pub struct PinoVaultInitCaller<'a> {
+/// VaultInitCaller
+pub struct VaultInitCaller<'a> {
   pub signer: &'a AccountView,
   pub target_prog: &'a AccountView,
   pub vaults: &'a [AccountView],
   //pub config_pda: &'a AccountView,
   pub system_program: &'a AccountView,
   pub rent_sysvar: &'a AccountView,
-  pub fees: &'a [u16],
-  pub vault_bumps: &'a [u8],
+  pub accts_len: &'a u8,
+  pub ix_data: &'a [u8],
 }
-impl<'a> PinoVaultInitCaller<'a> {
+impl<'a> VaultInitCaller<'a> {
   pub const DISCRIMINATOR: &'a u8 = &5;
 
   pub fn process(self) -> ProgramResult {
-    let PinoVaultInitCaller {
+    let VaultInitCaller {
       signer,
       target_prog,
       vaults,
       //config_pda,
       system_program,
       rent_sysvar,
-      fees,
-      vault_bumps,
+      accts_len,
+      ix_data,
     } = self;
     log!("---------== process()");
     if vaults.len() != 2 {
       return Ee::TxnAcctsLength.e();
     }
-    log!("PinoVaultInitCaller 1");
-    let instruction_accounts: [InstructionAccount; 5] = [
-      InstructionAccount::writable_signer(signer.address()),
-      InstructionAccount::readonly(system_program.address()),
-      InstructionAccount::readonly(rent_sysvar.address()),
-      InstructionAccount::writable((vaults[0]).address()),
-      InstructionAccount::writable((vaults[1]).address()),
-    ];
-    log!("PinoVaultInitCaller 2");
+    log!("VaultInitCaller 1");
+    const MAX_ACCT_LEN: usize = 15;
+    let mut instruction_accounts =
+      [const { MaybeUninit::<InstructionAccount>::uninit() }; MAX_ACCT_LEN];
+
+    instruction_accounts[0].write(InstructionAccount::writable_signer(signer.address()));
+    instruction_accounts[1].write(InstructionAccount::readonly(system_program.address()));
+    instruction_accounts[2].write(InstructionAccount::readonly(rent_sysvar.address()));
+    instruction_accounts[3].write(InstructionAccount::writable((vaults[0]).address()));
+    instruction_accounts[4].write(InstructionAccount::writable((vaults[1]).address()));
+
+    log!("VaultInitCaller 2");
     let account_views = &[signer, system_program, rent_sysvar, &vaults[0], &vaults[1]];
 
-    // Instruction data layout:
-    // - [0 ]: Pinocchio func discriminator
-    // - [1..3 ]: vault_bumps
-    // - [3..7 ]: feess
-    const LEN: usize = 7;
-    let mut instruction_data = [0u8; LEN];
+    //let ix_data_size = 7;
+    // write_bytes(&mut ix_data[1..9], &self.amount.to_le_bytes());
 
-    log!("PinoVaultInitCaller 4");
-    // Set discriminator 0 as u8 at index 0
-    instruction_data[0] = 0;
-    //instruction_data[0..8].copy_from_slice(&anchor_discriminator_bytes);
-    let index_after_array1 = vault_bumps.len() + 1;
-    instruction_data[1..index_after_array1].copy_from_slice(vault_bumps);
-    //let amount = 1700u64;
-    //instruction_data[..7].copy_from_slice(&amount.to_le_bytes());
-
-    log!(
-      "PinoVaultInitCaller 5. instruction_data: {}, len(): {}",
-      &instruction_data,
-      instruction_data.len()
-    );
-    //[3..7] vault_bumps (2x1 bytes, u8)
-    let fee_byte_len = 2;
-    log!("fee_byte_len: {}", fee_byte_len);
-    for (idx, _bump) in vault_bumps.iter().enumerate() {
-      log!("index: {}, instruction_data: {}", idx, &instruction_data);
-      let fee = fees[idx].to_le_bytes();
-      instruction_data
-        [idx * fee_byte_len + index_after_array1..(idx + 1) * fee_byte_len + index_after_array1]
-        .copy_from_slice(&fee);
-    }
-    // Set amount as u64 at offset [1..9]
-    //write_bytes(&mut instruction_data[1..9], &self.amount.to_le_bytes());
-
-    log!("PinoVaultInitCaller 6");
+    log!("VaultInitCaller 6");
     let instruction = InstructionView {
       program_id: target_prog.address(),
-      accounts: &instruction_accounts,
-      data: &instruction_data, //unsafe { from_raw_parts(instruction_data.as_ptr() as _, LEN) },
+      accounts: unsafe { from_raw_parts(instruction_accounts.as_ptr() as _, *accts_len as usize) }, //&instruction_accounts,
+      data: ix_data, //unsafe { from_raw_parts(ix_data.as_ptr() as _, *ix_data_size as usize) },
     };
-    log!("PinoVaultInitCaller 7");
+    log!("VaultInitCaller 7");
     invoke_signed(&instruction, account_views, &[])?;
     Ok(())
   }
 }
-impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for PinoVaultInitCaller<'a> {
+impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for VaultInitCaller<'a> {
   type Error = ProgramError;
 
   fn try_from(value: (&'a [u8], &'a [AccountView])) -> Result<Self, Self::Error> {
-    log!("PinoVaultInitCaller try_from");
+    log!("VaultInitCaller try_from");
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
     //let data_len = 3;
@@ -113,7 +82,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for PinoVaultInitCaller<'a> {
     check_signer(signer)?;
     check_sysprog(system_program)?;
     check_rent_sysvar(rent_sysvar)?;
-    log!("PinoVaultInitCaller try_from 3");
+    log!("VaultInitCaller try_from 3");
     //writable(config_pda)?;
 
     // Each txn_acct requires a vault, vault_ata
@@ -122,38 +91,10 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for PinoVaultInitCaller<'a> {
     if txn_len > 8 || txn_len == 0 {
       return Err(Ee::TxnLenInvalid.into());
     }
-    log!("PinoVaultInitCaller try_from 4");
 
     //-------== parse variadic data
-    let (vault_bumps, data) = data
-      .split_at_checked(txn_len)
-      .ok_or_else(|| Ee::ByteSizeVaultBumps)?;
-    log!("vault_bumps: {}", vault_bumps);
-
-    let (fees_slice, data) = data
-      .split_at_checked(size_of::<u16>() * txn_len)
-      .ok_or_else(|| Ee::ByteSizeFees)?;
-
-    let fees: &[u16] = unsafe {
-      core::slice::from_raw_parts(
-        fees_slice.as_ptr() as *const u16,
-        fees_slice.len() / size_of::<u16>(),
-      )
-    };
-    log!("fees: {}", fees);
-    if data.len() > 0 {
-      return Err(Ee::InputDataLen.into());
-    }
-
-    for (i, vault) in vaults.iter().enumerate() {
-      log!("tryFrom loop : i = {}", i);
-      writable(vault)?;
-      if !vault.is_data_empty() {
-        return Err(Ee::VaultExists.into());
-      }
-      none_zero_u8(vault_bumps[i])?;
-      none_zero_u16(fees[i])?;
-    }
+    let (accts_len, data) = data.split_first().ok_or_else(|| Ee::ByteSizeForU8)?;
+    log!("accts_len: {}", *accts_len);
 
     Ok(Self {
       signer,
@@ -162,8 +103,8 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for PinoVaultInitCaller<'a> {
       //config_pda,
       system_program,
       rent_sysvar,
-      fees,
-      vault_bumps,
+      accts_len,
+      ix_data: data,
     })
   }
 }

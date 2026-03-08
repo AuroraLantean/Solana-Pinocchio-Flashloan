@@ -6,13 +6,13 @@ import type { Keypair, PublicKey } from "@solana/web3.js";
 import {
 	acctExists,
 	checkVaultData,
-	funcCaller,
 	initSolBalc,
 	type PdaOut,
 	setAtaCheck,
 	setMint,
 	svm,
 	vaultInitArgs,
+	vaultInitCaller,
 	//vault1,
 	//vaultAta1,
 	//vaultO,
@@ -74,8 +74,18 @@ const _mintmals = 6;
 test("Init Vault", () => {
 	ll("\n----------== Init Vault");
 	signerKp = adminKp;
+	const disc0 = new Uint8Array([5]); //funcCaller
+	const disc1 = new Uint8Array([0]); //vaultInit
 	const { vaultBumps, vaults } = vaultInitArgs(fees);
-	funcCaller(signerKp, flashloanProgAddr, vaults, fees, vaultBumps);
+	vaultInitCaller(
+		signerKp,
+		flashloanProgAddr,
+		vaults,
+		disc0,
+		disc1,
+		fees,
+		vaultBumps,
+	);
 	ll("signer:", signerKp.publicKey.toBase58());
 	checkVaultData(vaults, fees, vaultBumps);
 });

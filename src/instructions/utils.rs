@@ -71,12 +71,12 @@ pub enum Ee {
   #[error("ByteSizeForU8")]
   ByteSizeForU8,
   //Byte Slice Sizes
-  #[error("ByteSliceSize128")]
-  ByteSliceSize128,
-  #[error("ByteSliceSize64")]
-  ByteSliceSize64,
-  #[error("ByteSliceSize32")]
-  ByteSliceSize32,
+  #[error("Xyz025")]
+  Xyz025,
+  #[error("Xyz026")]
+  Xyz026,
+  #[error("ByteSizeDisc")]
+  ByteSizeDisc,
   #[error("ByteSizeVaultBumps")]
   ByteSizeVaultBumps,
   #[error("ByteSizeFees")]
@@ -258,9 +258,9 @@ impl TryFrom<u32> for Ee {
       22 => Ok(Ee::ByteSizeForU32),
       23 => Ok(Ee::ByteSizeForU16),
       24 => Ok(Ee::ByteSizeForU8),
-      25 => Ok(Ee::ByteSliceSize128),
-      26 => Ok(Ee::ByteSliceSize64),
-      27 => Ok(Ee::ByteSliceSize32),
+      25 => Ok(Ee::Xyz025),
+      26 => Ok(Ee::Xyz026),
+      27 => Ok(Ee::ByteSizeDisc),
       28 => Ok(Ee::ByteSizeVaultBumps),
       29 => Ok(Ee::ByteSizeFees),
 
@@ -362,9 +362,9 @@ impl ToStr for Ee {
       Ee::ByteSizeForU32 => "ByteSizeForU32",
       Ee::ByteSizeForU16 => "ByteSizeForU16",
       Ee::ByteSizeForU8 => "ByteSizeForU8",
-      Ee::ByteSliceSize128 => "ByteSliceSize128",
-      Ee::ByteSliceSize64 => "ByteSliceSize64",
-      Ee::ByteSliceSize32 => "ByteSliceSize32",
+      Ee::Xyz025 => "Xyz025",
+      Ee::Xyz026 => "Xyz026",
+      Ee::ByteSizeDisc => "ByteSizeDisc",
       Ee::ByteSizeVaultBumps => "ByteSizeVaultBumps",
       Ee::ByteSizeFees => "ByteSizeFees",
 

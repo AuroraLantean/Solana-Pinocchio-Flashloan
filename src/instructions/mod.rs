@@ -104,7 +104,7 @@ pub enum ProgramIx {
   #[account(2, name = "system_program", desc = "System Program")]
   #[account(3, name = "rent_sysvar", desc = "Rent Sysvar")]
   #[account(4, writable, name = "vault", desc = "Vault PDA")]
-  PinoVaultInitCaller { vault_bump: u8, fee: u16 },
+  VaultInitCaller { vault_bump: u8, fee: u16 },
   //---------------== Admin PDA
   //---------------== User PDA
   //---------------== Action PDA

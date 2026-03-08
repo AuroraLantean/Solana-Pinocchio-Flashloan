@@ -170,29 +170,34 @@ export const checkVaultData = (
 	}
 	ll("checkVaultData successful");
 };
-export const funcCaller = (
+export const vaultInitCaller = (
 	userSigner: Keypair,
 	target_prog: PublicKey,
 	//configPda: PublicKey,
 	vaults: PublicKey[],
+	disc0: Uint8Array<ArrayBuffer>,
+	disc1: Uint8Array<ArrayBuffer>,
 	fees: number[],
 	vaultBumps: number[],
 ) => {
-	const disc = 5;
 	const { ixKeyArray, feesU8 } = makeVaultInitIxKeys(vaults, fees, vaultBumps);
-	const argData = [...vaultBumps, ...feesU8];
+	const ixData = [...disc1, ...vaultBumps, ...feesU8];
+	//const ix_data_size = argData1.length;
+
+	const keys = [
+		{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+		{ pubkey: target_prog, isSigner: false, isWritable: false },
+		{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+		{ pubkey: RentSysvar, isSigner: false, isWritable: false },
+		...ixKeyArray,
+	];
+	const argData = [keys.length - 1, ...ixData]; // -1 to exclude target_prog
 
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
-		keys: [
-			{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-			{ pubkey: target_prog, isSigner: false, isWritable: false },
-			{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
-			{ pubkey: RentSysvar, isSigner: false, isWritable: false },
-			...ixKeyArray,
-		],
+		keys,
 		programId: funcCallerProgAddr,
-		data: Buffer.from([disc, ...argData]),
+		data: Buffer.from([...disc0, ...argData]),
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner], "", funcCallerProgAddr);
 };

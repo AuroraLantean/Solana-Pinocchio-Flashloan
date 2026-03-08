@@ -51,9 +51,7 @@ fn process_instruction(
     TokLgcDeposit::DISCRIMINATOR => TokLgcDeposit::try_from((data, accounts))?.process(),
     FlashloanBorrow::DISCRIMINATOR => FlashloanBorrow::try_from((data, accounts))?.process(),
     FlashloanRepay::DISCRIMINATOR => FlashloanRepay::try_from((data, accounts))?.process(),
-    PinoVaultInitCaller::DISCRIMINATOR => {
-      PinoVaultInitCaller::try_from((data, accounts))?.process()
-    }
+    VaultInitCaller::DISCRIMINATOR => VaultInitCaller::try_from((data, accounts))?.process(),
     _ => Err(Ee::MethodDiscriminator.into()),
   } //file names start with a lower case + Camel cases, but struct names start with Upper case + Camel cases!
 }
