@@ -43,6 +43,7 @@ import {
 	admin,
 	flashloanProgAddr,
 	funcCallerProgAddr,
+	futureOptionAddr,
 	hacker,
 	owner,
 	RentSysvar,
@@ -175,18 +176,18 @@ export const vaultInitCaller = (
 	target_prog: PublicKey,
 	//configPda: PublicKey,
 	vaults: PublicKey[],
-	disc0: Uint8Array<ArrayBuffer>,
-	disc1: Uint8Array<ArrayBuffer>,
+	targetProgDisc: number[],
 	fees: number[],
 	vaultBumps: number[],
 ) => {
+	const disc = 5; //pinocchio prog func disc
 	const { ixKeyArray, feesU8 } = makeVaultInitIxKeys(vaults, fees, vaultBumps);
-	const ixData = [...disc1, ...vaultBumps, ...feesU8];
+	const ixData: number[] = [...targetProgDisc, ...vaultBumps, ...feesU8];
 	//const ix_data_size = argData1.length;
 
 	const keys = [
 		{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
-		{ pubkey: target_prog, isSigner: false, isWritable: false },
+		{ pubkey: target_prog, isSigner: false, isWritable: false }, //added
 		{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
 		{ pubkey: RentSysvar, isSigner: false, isWritable: false },
 		...ixKeyArray,
@@ -197,10 +198,11 @@ export const vaultInitCaller = (
 	const ix = new TransactionInstruction({
 		keys,
 		programId: funcCallerProgAddr,
-		data: Buffer.from([...disc0, ...argData]),
+		data: Buffer.from([disc, ...argData]),
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner], "", funcCallerProgAddr);
 };
+
 export const vaultAtaInit = (
 	userSigner: Keypair,
 	vaultPda: PublicKey,
@@ -780,7 +782,7 @@ export const deployFlashloanProgram = (
 	programPath = "target/deploy/pinocchio_flashloan.so",
 	computeMaxUnits?: bigint,
 ) => {
-	ll("load deployFlashloanProgram...");
+	ll("load deploy program...");
 	if (computeMaxUnits) {
 		const computeBudget = new ComputeBudget();
 		computeBudget.computeUnitLimit = computeMaxUnits;
@@ -800,6 +802,12 @@ deployFlashloanProgram(
 	"program_bytes/pinocchio_flashloan.so",
 ); //which is compiled with different declare_id!(new_addr)
 acctExists(funcCallerProgAddr);
+
+deployFlashloanProgram(
+	futureOptionAddr,
+	"program_bytes/future_option_market.so",
+);
+acctExists(futureOptionAddr);
 
 //---------------== Run Test
 export const sendTxns = (

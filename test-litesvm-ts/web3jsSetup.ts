@@ -31,6 +31,11 @@ export const futureOptionAddr = new PublicKey(
 	"CgZEcSRPh1Ay1EYR4VJPTJRYcRkTDjjZhBAjZ5M8keGp",
 );
 ll("futureOptionAddr:", futureOptionAddr.toBase58());
+export const futureOptionAnchorPda = new PublicKey(
+	"AKNS6cRVMF684tseZSAiu4KCxvJPjyEtpqNy7mnDDyJt",
+);
+ll("futureOptionAnchorPda:", futureOptionAnchorPda.toBase58());
+export const futureOptionAnchorPdaBump = 255;
 
 export const SYSTEM_PROGRAM = new PublicKey("11111111111111111111111111111111"); //default
 export const RentSysvar = new PublicKey(

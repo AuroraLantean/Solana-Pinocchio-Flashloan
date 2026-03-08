@@ -3,6 +3,7 @@
 #![no_std]
 #![allow(unexpected_cfgs)]
 use pinocchio::{entrypoint, error::ProgramError, AccountView, Address, ProgramResult};
+use pinocchio_log::log;
 use pinocchio_pubkey::declare_id;
 
 //#[cfg(not(feature = "no-entrypoint"))]
@@ -43,6 +44,7 @@ fn process_instruction(
   let (discriminator, data) = instruction_data
     .split_first()
     .ok_or_else(|| ProgramError::InvalidInstructionData)?;
+  //log!("discriminator: {}", *discriminator);
 
   //reads the first byte as a discriminator to determine which method to call (here: 0 = DepositSol, 1 = WithdrawSol).
   match discriminator {
@@ -52,6 +54,9 @@ fn process_instruction(
     FlashloanBorrow::DISCRIMINATOR => FlashloanBorrow::try_from((data, accounts))?.process(),
     FlashloanRepay::DISCRIMINATOR => FlashloanRepay::try_from((data, accounts))?.process(),
     VaultInitCaller::DISCRIMINATOR => VaultInitCaller::try_from((data, accounts))?.process(),
+    InitAnchorPdaCaller::DISCRIMINATOR => {
+      InitAnchorPdaCaller::try_from((data, accounts))?.process()
+    }
     _ => Err(Ee::MethodDiscriminator.into()),
   } //file names start with a lower case + Camel cases, but struct names start with Upper case + Camel cases!
 }

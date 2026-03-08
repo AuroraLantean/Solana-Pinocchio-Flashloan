@@ -684,3 +684,9 @@ pub fn parse_u16(data: &[u8]) -> Result<u16, ProgramError> {
   // let amount = u64::from_le_bytes([data[0], data[1], data[2], data[3]]);
   Ok(amt)
 }
+/*Anchor discriminator
+pub fn get_instruction_discriminator(namespace: &[&[u8]]) -> u64 {
+  let mut discriminator = [0u8; 8];
+  discriminator.copy_from_slice(&hashv(namespace).to_bytes()[..8]);
+  u64::from_be_bytes(discriminator)
+}*/

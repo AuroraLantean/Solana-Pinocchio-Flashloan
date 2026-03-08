@@ -3,6 +3,7 @@
 import { expect, test } from "bun:test";
 //Tutorial: <https://litesvm.github.io/litesvm/tutorial.html>
 import type { Keypair, PublicKey } from "@solana/web3.js";
+
 import {
 	acctExists,
 	checkVaultData,
@@ -22,7 +23,6 @@ import {
 	admin,
 	adminKp,
 	flashloanProgAddr,
-	hacker,
 	usdcMint,
 	user1,
 	user2,
@@ -74,22 +74,20 @@ const _mintmals = 6;
 test("Init Vault", () => {
 	ll("\n----------== Init Vault");
 	signerKp = adminKp;
-	const disc0 = new Uint8Array([5]); //funcCaller
-	const disc1 = new Uint8Array([0]); //vaultInit
+	const targetProgDisc = [0]; //vaultInit
 	const { vaultBumps, vaults } = vaultInitArgs(fees);
 	vaultInitCaller(
 		signerKp,
 		flashloanProgAddr,
 		vaults,
-		disc0,
-		disc1,
+		targetProgDisc,
 		fees,
 		vaultBumps,
 	);
 	ll("signer:", signerKp.publicKey.toBase58());
 	checkVaultData(vaults, fees, vaultBumps);
 });
+
 //TODO: Pinocchio calls Pinocchio with seeds
-//TODO: Pinocchio calls Anchor program via signer
 //TODO: Pinocchio calls Anchor program via seeds
 //TODO: in Rust backend: init account with Pkey, Transfer SOL/Tokens, call programs

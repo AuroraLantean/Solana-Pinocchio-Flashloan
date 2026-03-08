@@ -7,6 +7,8 @@ pub mod flashloanRepay;
 #[allow(non_snake_case)]
 pub mod funcCaller;
 #[allow(non_snake_case)]
+pub mod funcCallerAnchor;
+#[allow(non_snake_case)]
 pub mod tokLgcDeposit;
 #[allow(non_snake_case)]
 pub mod vaultAtaInit;
@@ -19,6 +21,7 @@ pub mod utils;
 pub use flashloanBorrow::*;
 pub use flashloanRepay::*;
 pub use funcCaller::*;
+pub use funcCallerAnchor::*;
 pub use tokLgcDeposit::*;
 pub use utils::*;
 pub use vaultAtaInit::*;
@@ -97,7 +100,7 @@ pub enum ProgramIx {
   #[account(4, writable, name = "debtor_ata", desc = "Debtor ATA")]
   FlashloanRepay {},
 
-  /// 5 FuncCaller
+  /// 5 VaultInitCaller
   #[account(0, signer, writable, name = "signer", desc = "signer")]
   //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
   #[account(1, name = "target_prog", desc = "Target Program")]
@@ -105,6 +108,15 @@ pub enum ProgramIx {
   #[account(3, name = "rent_sysvar", desc = "Rent Sysvar")]
   #[account(4, writable, name = "vault", desc = "Vault PDA")]
   VaultInitCaller { vault_bump: u8, fee: u16 },
+
+  /// 6 InitAnchorPdaCaller
+  #[account(0, signer, writable, name = "signer", desc = "signer")]
+  //#[account(5, writable, name = "config_pda", desc = "Config PDA")]
+  #[account(1, name = "target_prog", desc = "Target Program")]
+  #[account(2, name = "system_program", desc = "System Program")]
+  //#[account(3, name = "rent_sysvar", desc = "Rent Sysvar")]
+  #[account(3, writable, name = "anchor_pda", desc = "Anchor PDA")]
+  InitAnchorPdaCaller { token_balc: u64, bump: u8 },
   //---------------== Admin PDA
   //---------------== User PDA
   //---------------== Action PDA
