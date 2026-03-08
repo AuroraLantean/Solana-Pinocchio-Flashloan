@@ -192,15 +192,49 @@ export const vaultInitCaller = (
 		{ pubkey: RentSysvar, isSigner: false, isWritable: false },
 		...ixKeyArray,
 	];
-	const argData = [keys.length - 1, ...ixData]; // -1 to exclude target_prog
+	const argData = [disc, keys.length - 1, ...ixData]; // -1 to exclude target_prog
 
 	const blockhash = svm.latestBlockhash();
 	const ix = new TransactionInstruction({
 		keys,
 		programId: funcCallerProgAddr,
-		data: Buffer.from([disc, ...argData]),
+		data: Buffer.from(argData),
 	});
 	sendTxns(svm, blockhash, [ix], [userSigner], "", funcCallerProgAddr);
+};
+export const initAnchorPdaCaller = (
+	userSigner: Keypair,
+	target_prog: PublicKey,
+	//configPda: PublicKey,
+	targetProgDisc: number[],
+	anchorPda: PublicKey,
+	tokenBalc: bigint,
+	bump: number,
+) => {
+	const disc = 6; //pinocchio prog func disc
+
+	const keys = [
+		{ pubkey: userSigner.publicKey, isSigner: true, isWritable: true },
+		{ pubkey: target_prog, isSigner: false, isWritable: false }, //added
+		{ pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+		//{ pubkey: RentSysvar, isSigner: false, isWritable: false }, //not needed in Anchor
+		{ pubkey: anchorPda, isSigner: false, isWritable: true },
+	];
+	const argData: number[] = [
+		disc,
+		keys.length - 1, // -1 to exclude target_prog
+		...targetProgDisc,
+		...numToBytes(tokenBalc, 64),
+		bump,
+	];
+	ll("argData:", argData);
+	const blockhash = svm.latestBlockhash();
+	const ix = new TransactionInstruction({
+		keys,
+		programId: flashloanProgAddr,
+		data: Buffer.from(argData),
+	});
+	sendTxns(svm, blockhash, [ix], [userSigner]);
 };
 
 export const vaultAtaInit = (

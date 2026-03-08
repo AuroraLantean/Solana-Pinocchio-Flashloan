@@ -7,6 +7,7 @@ import type { Keypair, PublicKey } from "@solana/web3.js";
 import {
 	acctExists,
 	checkVaultData,
+	initAnchorPdaCaller,
 	initSolBalc,
 	type PdaOut,
 	setAtaCheck,
@@ -23,6 +24,9 @@ import {
 	admin,
 	adminKp,
 	flashloanProgAddr,
+	futureOptionAddr,
+	futureOptionAnchorPda,
+	futureOptionAnchorPdaBump,
 	usdcMint,
 	user1,
 	user2,
@@ -62,7 +66,6 @@ test("Set USDC Mint and ATAs", () => {
 	setAtaCheck(usdcMint, user1, initBalc, "User1 USDC");
 	setAtaCheck(usdcMint, user2, initBalc, "User2 USDC");
 	setAtaCheck(usdcMint, user3, initBalc, "User3 USDC");
-	setAtaCheck(usdcMint, hacker, initBalc, "Hacker USDC");
 });
 //change declare_id!() to 8ZEf7
 // jj build2;
@@ -88,6 +91,24 @@ test("Init Vault", () => {
 	checkVaultData(vaults, fees, vaultBumps);
 });
 
+test("Init AnchorPda", () => {
+	ll("\n----------== Init AnchorPda");
+	signerKp = adminKp;
+	const targetProgDisc = [200, 48, 123, 186, 217, 204, 239, 70]; //copied from Anchor IDL
+	const pdaAddr = futureOptionAnchorPda;
+	const bump = futureOptionAnchorPdaBump;
+	const tokenBalc = 73200n;
+	initAnchorPdaCaller(
+		signerKp,
+		futureOptionAddr,
+		targetProgDisc,
+		pdaAddr,
+		tokenBalc,
+		bump,
+	);
+	ll("signer:", signerKp.publicKey.toBase58());
+	//checkVaultData(vaults, fees, vaultBumps);
+});
 //TODO: Pinocchio calls Pinocchio with seeds
 //TODO: Pinocchio calls Anchor program via seeds
 //TODO: in Rust backend: init account with Pkey, Transfer SOL/Tokens, call programs
