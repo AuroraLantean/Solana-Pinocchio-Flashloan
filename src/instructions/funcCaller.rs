@@ -12,8 +12,8 @@ use crate::{
   writable, Ee,
 };
 
-/// FuncCaller
-pub struct FuncCaller<'a> {
+/// PinoVaultInitCaller
+pub struct PinoVaultInitCaller<'a> {
   pub signer: &'a AccountView,
   pub target_prog: &'a AccountView,
   pub vaults: &'a [AccountView],
@@ -23,11 +23,11 @@ pub struct FuncCaller<'a> {
   pub fees: &'a [u16],
   pub vault_bumps: &'a [u8],
 }
-impl<'a> FuncCaller<'a> {
+impl<'a> PinoVaultInitCaller<'a> {
   pub const DISCRIMINATOR: &'a u8 = &5;
 
   pub fn process(self) -> ProgramResult {
-    let FuncCaller {
+    let PinoVaultInitCaller {
       signer,
       target_prog,
       vaults,
@@ -41,7 +41,7 @@ impl<'a> FuncCaller<'a> {
     if vaults.len() != 2 {
       return Ee::TxnAcctsLength.e();
     }
-    log!("FuncCaller 1");
+    log!("PinoVaultInitCaller 1");
     let instruction_accounts: [InstructionAccount; 5] = [
       InstructionAccount::writable_signer(signer.address()),
       InstructionAccount::readonly(system_program.address()),
@@ -49,7 +49,7 @@ impl<'a> FuncCaller<'a> {
       InstructionAccount::writable((vaults[0]).address()),
       InstructionAccount::writable((vaults[1]).address()),
     ];
-    log!("FuncCaller 2");
+    log!("PinoVaultInitCaller 2");
     let account_views = &[signer, system_program, rent_sysvar, &vaults[0], &vaults[1]];
 
     // Instruction data layout:
@@ -59,42 +59,49 @@ impl<'a> FuncCaller<'a> {
     const LEN: usize = 7;
     let mut instruction_data = [0u8; LEN];
 
-    log!("FuncCaller 4");
+    log!("PinoVaultInitCaller 4");
     // Set discriminator 0 as u8 at index 0
     instruction_data[0] = 0;
-    instruction_data[1..1 + vault_bumps.len()].copy_from_slice(vault_bumps);
+    //instruction_data[0..8].copy_from_slice(&anchor_discriminator_bytes);
+    let index_after_array1 = vault_bumps.len() + 1;
+    instruction_data[1..index_after_array1].copy_from_slice(vault_bumps);
+    //let amount = 1700u64;
+    //instruction_data[..7].copy_from_slice(&amount.to_le_bytes());
 
     log!(
-      "FuncCaller 5. instruction_data: {}, len(): {}",
+      "PinoVaultInitCaller 5. instruction_data: {}, len(): {}",
       &instruction_data,
       instruction_data.len()
     );
     //[3..7] vault_bumps (2x1 bytes, u8)
+    let fee_byte_len = 2;
+    log!("fee_byte_len: {}", fee_byte_len);
     for (idx, _bump) in vault_bumps.iter().enumerate() {
       log!("index: {}, instruction_data: {}", idx, &instruction_data);
-      //instruction_data[idx + 1] = *bump;
       let fee = fees[idx].to_le_bytes();
-      instruction_data[idx * 2 + 3..idx * 2 + 5].copy_from_slice(&fee);
+      instruction_data
+        [idx * fee_byte_len + index_after_array1..(idx + 1) * fee_byte_len + index_after_array1]
+        .copy_from_slice(&fee);
     }
     // Set amount as u64 at offset [1..9]
     //write_bytes(&mut instruction_data[1..9], &self.amount.to_le_bytes());
 
-    log!("FuncCaller 6");
+    log!("PinoVaultInitCaller 6");
     let instruction = InstructionView {
       program_id: target_prog.address(),
       accounts: &instruction_accounts,
       data: &instruction_data, //unsafe { from_raw_parts(instruction_data.as_ptr() as _, LEN) },
     };
-    log!("FuncCaller 7");
+    log!("PinoVaultInitCaller 7");
     invoke_signed(&instruction, account_views, &[])?;
     Ok(())
   }
 }
-impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FuncCaller<'a> {
+impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for PinoVaultInitCaller<'a> {
   type Error = ProgramError;
 
   fn try_from(value: (&'a [u8], &'a [AccountView])) -> Result<Self, Self::Error> {
-    log!("FuncCaller try_from");
+    log!("PinoVaultInitCaller try_from");
     let (data, accounts) = value;
     log!("accounts len: {}, data len: {}", accounts.len(), data.len());
     //let data_len = 3;
@@ -106,7 +113,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FuncCaller<'a> {
     check_signer(signer)?;
     check_sysprog(system_program)?;
     check_rent_sysvar(rent_sysvar)?;
-    log!("FuncCaller try_from 3");
+    log!("PinoVaultInitCaller try_from 3");
     //writable(config_pda)?;
 
     // Each txn_acct requires a vault, vault_ata
@@ -115,7 +122,7 @@ impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for FuncCaller<'a> {
     if txn_len > 8 || txn_len == 0 {
       return Err(Ee::TxnLenInvalid.into());
     }
-    log!("FuncCaller try_from 4");
+    log!("PinoVaultInitCaller try_from 4");
 
     //-------== parse variadic data
     let (vault_bumps, data) = data

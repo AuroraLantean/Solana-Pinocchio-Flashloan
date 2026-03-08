@@ -79,3 +79,7 @@ test("Init Vault", () => {
 	ll("signer:", signerKp.publicKey.toBase58());
 	checkVaultData(vaults, fees, vaultBumps);
 });
+//TODO: Pinocchio calls Pinocchio with seeds
+//TODO: Pinocchio calls Anchor program via signer
+//TODO: Pinocchio calls Anchor program via seeds
+//TODO: in Rust backend: init account with Pkey, Transfer SOL/Tokens, call programs
